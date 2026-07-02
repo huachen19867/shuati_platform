@@ -44,6 +44,32 @@ AppConfig AppConfig::loadFromFile(const std::string& path) {
   config.security.uploadMaxMb =
       raw.getInt("security.upload_max_mb", config.security.uploadMaxMb);
 
+  config.judge.dockerImage =
+      raw.getString("judge.docker_image", config.judge.dockerImage);
+  config.judge.workers = raw.getInt("judge.workers", config.judge.workers);
+  config.judge.sourceSizeLimitKb = raw.getInt(
+      "judge.source_size_limit_kb", config.judge.sourceSizeLimitKb);
+  config.judge.compileTimeoutMs = raw.getInt(
+      "judge.compile_timeout_ms", config.judge.compileTimeoutMs);
+  config.judge.runTimeoutMs =
+      raw.getInt("judge.run_timeout_ms", config.judge.runTimeoutMs);
+  config.judge.memoryLimitMb =
+      raw.getInt("judge.memory_limit_mb", config.judge.memoryLimitMb);
+  config.judge.outputLimitKb =
+      raw.getInt("judge.output_limit_kb", config.judge.outputLimitKb);
+  config.judge.compileMessageLimitKb = raw.getInt(
+      "judge.compile_message_limit_kb", config.judge.compileMessageLimitKb);
+  config.judge.stderrLimitKb =
+      raw.getInt("judge.stderr_limit_kb", config.judge.stderrLimitKb);
+  config.judge.tempDir = raw.getString("judge.temp_dir", config.judge.tempDir);
+
+  config.storage.testcaseDir =
+      raw.getString("storage.testcase_dir", config.storage.testcaseDir);
+  config.storage.submissionDir =
+      raw.getString("storage.submission_dir", config.storage.submissionDir);
+  config.storage.sourceRetentionHours = raw.getInt(
+      "storage.source_retention_hours", config.storage.sourceRetentionHours);
+
   config.superAdmin.enabled = raw.getBool(
       "bootstrap.super_admin.enabled", config.superAdmin.enabled);
   config.superAdmin.username = raw.getString(

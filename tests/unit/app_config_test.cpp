@@ -111,3 +111,63 @@ bootstrap:
 
   std::filesystem::remove(path);
 }
+
+TEST(AppConfigTest, LoadsJudgeAndStorageValues) {
+  const auto path = writeTempConfig(R"CFG(
+judge:
+  docker_image: "custom-cpp-judge:latest"
+  workers: 3
+  source_size_limit_kb: 96
+  compile_timeout_ms: 12000
+  run_timeout_ms: 3000
+  memory_limit_mb: 256
+  output_limit_kb: 2048
+  compile_message_limit_kb: 16
+  stderr_limit_kb: 6
+  temp_dir: "tmp/judge"
+storage:
+  testcase_dir: "tmp/testcases"
+  submission_dir: "tmp/submissions"
+  source_retention_hours: 12
+)CFG");
+
+  const auto config = shuati::app::AppConfig::loadFromFile(path.string());
+
+  EXPECT_EQ(config.judge.dockerImage, "custom-cpp-judge:latest");
+  EXPECT_EQ(config.judge.workers, 3);
+  EXPECT_EQ(config.judge.sourceSizeLimitKb, 96);
+  EXPECT_EQ(config.judge.compileTimeoutMs, 12000);
+  EXPECT_EQ(config.judge.runTimeoutMs, 3000);
+  EXPECT_EQ(config.judge.memoryLimitMb, 256);
+  EXPECT_EQ(config.judge.outputLimitKb, 2048);
+  EXPECT_EQ(config.judge.compileMessageLimitKb, 16);
+  EXPECT_EQ(config.judge.stderrLimitKb, 6);
+  EXPECT_EQ(config.judge.tempDir, "tmp/judge");
+  EXPECT_EQ(config.storage.testcaseDir, "tmp/testcases");
+  EXPECT_EQ(config.storage.submissionDir, "tmp/submissions");
+  EXPECT_EQ(config.storage.sourceRetentionHours, 12);
+
+  std::filesystem::remove(path);
+}
+
+TEST(AppConfigTest, UsesConservativeJudgeAndStorageDefaults) {
+  const auto path = writeTempConfig("app:\n  name: minimal\n");
+
+  const auto config = shuati::app::AppConfig::loadFromFile(path.string());
+
+  EXPECT_EQ(config.judge.dockerImage, "shuati-cpp-judge:latest");
+  EXPECT_EQ(config.judge.workers, 4);
+  EXPECT_EQ(config.judge.sourceSizeLimitKb, 64);
+  EXPECT_EQ(config.judge.compileTimeoutMs, 10000);
+  EXPECT_EQ(config.judge.runTimeoutMs, 2000);
+  EXPECT_EQ(config.judge.memoryLimitMb, 128);
+  EXPECT_EQ(config.judge.outputLimitKb, 1024);
+  EXPECT_EQ(config.judge.compileMessageLimitKb, 8);
+  EXPECT_EQ(config.judge.stderrLimitKb, 4);
+  EXPECT_EQ(config.judge.tempDir, "data/judge_tmp");
+  EXPECT_EQ(config.storage.testcaseDir, "data/testcases");
+  EXPECT_EQ(config.storage.submissionDir, "data/submissions");
+  EXPECT_EQ(config.storage.sourceRetentionHours, 24);
+
+  std::filesystem::remove(path);
+}

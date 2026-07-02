@@ -35,6 +35,25 @@ struct SecurityConfig {
   int uploadMaxMb = 20;
 };
 
+struct JudgeConfig {
+  std::string dockerImage = "shuati-cpp-judge:latest";
+  int workers = 4;
+  int sourceSizeLimitKb = 64;
+  int compileTimeoutMs = 10000;
+  int runTimeoutMs = 2000;
+  int memoryLimitMb = 128;
+  int outputLimitKb = 1024;
+  int compileMessageLimitKb = 8;
+  int stderrLimitKb = 4;
+  std::string tempDir = "data/judge_tmp";
+};
+
+struct StorageConfig {
+  std::string testcaseDir = "data/testcases";
+  std::string submissionDir = "data/submissions";
+  int sourceRetentionHours = 24;
+};
+
 struct SuperAdminConfig {
   bool enabled = true;
   std::string username = "root";
@@ -48,6 +67,8 @@ struct AppConfig {
   DatabaseConfig database;
   LogConfig logs;
   SecurityConfig security;
+  JudgeConfig judge;
+  StorageConfig storage;
   SuperAdminConfig superAdmin;
 
   static AppConfig loadFromFile(const std::string& path);

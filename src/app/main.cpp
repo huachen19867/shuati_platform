@@ -11,6 +11,10 @@
 #include "shuati/auth/password_hasher.h"
 #include "shuati/auth/session_manager.h"
 #include "shuati/auth/user_repository.h"
+#include "shuati/judge/local_cpp_runner.h"
+#include "shuati/judge/submission_service.h"
+#include "shuati/problem/problem_service.h"
+#include "shuati/problem/testcase_service.h"
 
 namespace {
 
@@ -34,6 +38,20 @@ int main(int argc, char** argv) {
     auto sessions = std::make_shared<shuati::auth::SessionManager>(
         std::chrono::hours(config.security.sessionTtlHours));
     shuati::auth::AuthService authService(users, passwordHasher, sessions);
+    auto problems =
+        std::make_shared<shuati::problem::InMemoryProblemRepository>();
+    shuati::problem::ProblemService problemService(problems);
+    shuati::problem::TestcaseService testcaseService(
+        config.storage.testcaseDir);
+    auto submissions =
+        std::make_shared<shuati::judge::InMemorySubmissionRepository>();
+    shuati::judge::SubmissionService submissionService(
+        submissions, config.judge.sourceSizeLimitKb);
+    shuati::judge::LocalCppRunner runner(
+        shuati::judge::LocalCppRunnerConfig{
+            "g++", config.judge.tempDir, config.judge.compileTimeoutMs,
+            config.judge.runTimeoutMs, config.judge.outputLimitKb,
+            config.judge.compileMessageLimitKb, config.judge.stderrLimitKb});
 
     if (config.superAdmin.enabled) {
       const auto bootstrapped = authService.bootstrapSuperAdmin(
@@ -49,7 +67,9 @@ int main(int argc, char** argv) {
     }
 
     httplib::Server server;
-    shuati::app::configureServer(server, config, loggers, &authService);
+    shuati::app::configureServer(server, config, loggers, &authService,
+                                 &problemService, &testcaseService,
+                                 &submissionService, &runner);
 
     std::cout << "shuati_platform listening on http://" << config.server.host
               << ':' << config.server.port << '\n';

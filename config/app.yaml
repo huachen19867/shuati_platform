@@ -24,6 +24,8 @@ judge:
   run_timeout_ms: 2000
   memory_limit_mb: 128
   output_limit_kb: 1024
+  compile_message_limit_kb: 8
+  stderr_limit_kb: 4
   temp_dir: "data/judge_tmp"
 
 storage:

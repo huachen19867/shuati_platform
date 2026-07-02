@@ -27,6 +27,11 @@ add_library(shuati_core
   src/common/crypto.cpp
   src/common/json_response.cpp
   src/common/logging.cpp
+  src/judge/judge_types.cpp
+  src/judge/local_cpp_runner.cpp
+  src/judge/submission_service.cpp
+  src/problem/problem_service.cpp
+  src/problem/testcase_service.cpp
 )
 
 target_include_directories(shuati_core
@@ -59,10 +64,14 @@ if(SHUATI_BUILD_TESTS)
     tests/unit/connection_pool_test.cpp
     tests/unit/config_test.cpp
     tests/unit/json_response_test.cpp
+    tests/unit/local_cpp_runner_test.cpp
     tests/unit/logging_test.cpp
+    tests/unit/problem_service_test.cpp
     tests/unit/role_test.cpp
     tests/unit/server_test.cpp
     tests/unit/session_manager_test.cpp
+    tests/unit/submission_service_test.cpp
+    tests/unit/testcase_service_test.cpp
   )
 
   target_link_libraries(shuati_tests
