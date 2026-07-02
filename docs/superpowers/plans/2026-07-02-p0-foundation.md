@@ -66,4 +66,4 @@
 - [ ] Run CMake configure/build/tests after `build-essential` is installed.
 - [x] If dependencies are missing, record the blocker and the exact install command.
 - [x] Update `SPEC.md` P0 checklist and technical log.
-- [ ] Commit and push to GitHub.
+- [x] Commit and push to GitHub.
