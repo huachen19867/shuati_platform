@@ -81,4 +81,4 @@
 - [x] Update P2 checklist.
 - [x] Record commands, MySQL boundary, session-expiry fix, and test results in the technical log.
 - [x] Run `cmake`, `cmake --build`, `ctest`, and service smoke tests.
-- [ ] Commit and push to GitHub.
+- [x] Commit and push to GitHub.
