@@ -484,11 +484,12 @@ MVP 完成时应满足：
 
 - [x] 确认 GitHub 远程仓库：`https://github.com/huachen19867/shuati_platform`。
 - [x] 将本地 `main` 首次推送到 GitHub：`git push -u origin main`。
-- [ ] 创建基础目录：`src/`、`public/`、`config/`、`data/`、`logs/`、`tests/`、`third_party/`、`scripts/`。
-- [ ] 建立 CMake 最小工程，能编译出后端可执行文件。
-- [ ] 放入 `cpp-httplib` 单头文件，并记录来源和版本。
-- [ ] 写 Ubuntu 依赖安装说明，覆盖 MySQL 客户端库、bcrypt、Docker、Google Test。
-- [ ] 准备 `config/app.yaml` 示例配置。
+- [x] 创建基础目录：`src/`、`public/`、`config/`、`data/`、`logs/`、`tests/`、`third_party/`、`scripts/`。
+- [x] 建立 CMake 最小工程文件，包含核心库、服务入口和 gtest 测试目标。
+- [ ] 安装 `build-essential` 后验证 CMake 能编译出后端可执行文件。
+- [x] 放入 `cpp-httplib` 单头文件，并记录来源和版本。
+- [x] 写 Ubuntu 依赖安装说明，覆盖 MySQL 客户端库、bcrypt、Docker、Google Test。
+- [x] 准备 `config/app.yaml` 示例配置。
 
 ### P1：最小可运行服务
 

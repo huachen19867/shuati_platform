@@ -1,0 +1,47 @@
+# Build outputs
+/build/
+/cmake-build-*/
+/CMakeFiles/
+/CMakeCache.txt
+/CTestTestfile.cmake
+/Testing/
+/compile_commands.json
+
+# Binaries and generated objects
+*.o
+*.obj
+*.a
+*.so
+*.dll
+*.dylib
+*.exe
+*.out
+
+# Runtime data
+/logs/*
+!/logs/.gitkeep
+/data/testcases/*
+!/data/testcases/.gitkeep
+/data/submissions/*
+!/data/submissions/.gitkeep
+/data/judge_tmp/*
+!/data/judge_tmp/.gitkeep
+
+# Local config overrides
+/config/*.local.yaml
+/config/*.secret.yaml
+.env
+
+# Editor and OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Test and tool caches
+.cache/
+.pytest_cache/
+.playwright-mcp/

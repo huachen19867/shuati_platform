@@ -1,0 +1,42 @@
+app:
+  name: "shuati-platform"
+  environment: "development"
+
+server:
+  host: "0.0.0.0"
+  port: 8080
+  public_dir: "public"
+
+database:
+  host: "127.0.0.1"
+  port: 3306
+  name: "shuati_platform"
+  user: "shuati"
+  password: "change-me"
+  pool_size: 4
+  acquire_timeout_ms: 3000
+
+judge:
+  docker_image: "shuati-cpp-judge:latest"
+  workers: 4
+  source_size_limit_kb: 64
+  compile_timeout_ms: 10000
+  run_timeout_ms: 2000
+  memory_limit_mb: 128
+  output_limit_kb: 1024
+  temp_dir: "data/judge_tmp"
+
+storage:
+  testcase_dir: "data/testcases"
+  submission_dir: "data/submissions"
+  source_retention_hours: 24
+
+logs:
+  access: "logs/access.log"
+  error: "logs/error.log"
+  judge: "logs/judge.log"
+
+security:
+  session_ttl_hours: 168
+  submit_interval_seconds: 5
+  upload_max_mb: 20
