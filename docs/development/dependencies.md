@@ -47,6 +47,24 @@ No CMAKE_CXX_COMPILER could be found.
 
 Run `scripts/install_ubuntu_deps.sh` or the package command above before building.
 
+## No-Sudo C++ Toolchain Fallback
+
+If the WSL user belongs to `sudo` but the current agent cannot provide the
+interactive sudo password, bootstrap a user-local C++ toolchain instead:
+
+```bash
+scripts/bootstrap_local_gcc.sh
+```
+
+This downloads Ubuntu `g++`/GCC 13 packages with `apt download`, extracts them
+under `$HOME/.local/toolchains/gcc-13-ubuntu24.04`, and links `g++` and `c++`
+into `$HOME/.local/bin`. Ubuntu's default `~/.profile` already adds that
+directory to `PATH` when it exists.
+
+The fallback does not mark Debian packages as system-installed. When you have
+an interactive terminal, installing `build-essential` with sudo is still the
+clean system-level setup.
+
 ## Build And Test
 
 After dependencies are installed:

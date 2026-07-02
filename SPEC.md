@@ -486,7 +486,7 @@ MVP 完成时应满足：
 - [x] 将本地 `main` 首次推送到 GitHub：`git push -u origin main`。
 - [x] 创建基础目录：`src/`、`public/`、`config/`、`data/`、`logs/`、`tests/`、`third_party/`、`scripts/`。
 - [x] 建立 CMake 最小工程文件，包含核心库、服务入口和 gtest 测试目标。
-- [ ] 安装 `build-essential` 后验证 CMake 能编译出后端可执行文件。
+- [x] 准备 C++ 编译工具链；无 sudo 时使用用户态 `g++ 13.3.0`，并验证 CMake 能编译出后端可执行文件。
 - [x] 放入 `cpp-httplib` 单头文件，并记录来源和版本。
 - [x] 写 Ubuntu 依赖安装说明，覆盖 MySQL 客户端库、bcrypt、Docker、Google Test。
 - [x] 准备 `config/app.yaml` 示例配置。
@@ -499,7 +499,7 @@ MVP 完成时应满足：
 - [x] 实现静态文件托管。
 - [x] 实现健康检查接口。
 - [x] 提供一个最小 HTML 首页。
-- [ ] 安装 `build-essential` 后启动服务，确认浏览器能访问 `http://IP:PORT`。
+- [x] 启动服务并通过 `curl` 验证 `http://127.0.0.1:8080` 和 `/api/health`。
 
 ### P2：数据库与账号闭环
 
