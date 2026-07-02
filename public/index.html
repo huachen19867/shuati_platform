@@ -5,39 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>shuati platform</title>
     <link rel="stylesheet" href="/assets/styles.css">
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.9/ace.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script defer src="/assets/app.js"></script>
   </head>
   <body>
-    <main class="shell">
-      <section class="summary" aria-labelledby="page-title">
-        <div>
-          <p class="eyebrow">Online Judge</p>
-          <h1 id="page-title">shuati platform</h1>
-          <p class="lede">A lightweight C++ ACM practice platform.</p>
-        </div>
-        <div class="status" id="service-status" data-state="checking">
-          <span class="dot" aria-hidden="true"></span>
-          <span id="status-text">Checking service</span>
-        </div>
-      </section>
+    <a class="skip-link" href="#app">跳到主要内容</a>
+    <header class="topbar">
+      <a class="brand" href="#/problems" aria-label="shuati platform 首页">
+        <span class="brand-mark" aria-hidden="true">SP</span>
+        <span>
+          <strong>shuati platform</strong>
+          <small>ACM Online Judge</small>
+        </span>
+      </a>
+      <nav class="main-nav" aria-label="主导航">
+        <a href="#/problems" data-nav="problems">题目</a>
+        <a href="#/submissions" data-nav="submissions">我的提交</a>
+        <a href="#/admin" data-nav="admin">后台</a>
+      </nav>
+      <div class="session-bar" id="session-bar"></div>
+    </header>
 
-      <section class="grid" aria-label="Project status">
-        <article>
-          <span class="label">Current phase</span>
-          <strong>P1</strong>
-          <p>Minimal service, static files, health check, and logs.</p>
-        </article>
-        <article>
-          <span class="label">Backend</span>
-          <strong>C++ / cpp-httplib</strong>
-          <p>One process serves REST JSON APIs and frontend assets.</p>
-        </article>
-        <article>
-          <span class="label">Judge mode</span>
-          <strong>ACM I/O</strong>
-          <p>C++ submissions with standard input and standard output.</p>
-        </article>
-      </section>
-    </main>
-    <script src="/assets/app.js"></script>
+    <main id="app" class="app-shell" tabindex="-1"></main>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
   </body>
 </html>

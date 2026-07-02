@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -20,6 +21,7 @@ enum class SubmissionError {
   Forbidden,
   NotFound,
   NoPendingTask,
+  RateLimited,
 };
 
 struct Actor {
@@ -40,6 +42,7 @@ struct Submission {
   int maxMemoryKb = 0;
   std::chrono::system_clock::time_point createdAt{};
   std::chrono::system_clock::time_point updatedAt{};
+  std::chrono::system_clock::time_point sourceDeletedAt{};
   std::vector<JudgeCaseResult> cases;
 };
 
@@ -76,6 +79,11 @@ class ISubmissionRepository {
 
 class InMemorySubmissionRepository : public ISubmissionRepository {
  public:
+  using Clock = std::function<std::chrono::system_clock::time_point()>;
+
+  explicit InMemorySubmissionRepository(
+      Clock clock = [] { return std::chrono::system_clock::now(); });
+
   Submission createSubmission(std::int64_t userId,
                               std::int64_t problemId,
                               const std::string& language,
@@ -86,18 +94,31 @@ class InMemorySubmissionRepository : public ISubmissionRepository {
   std::optional<Submission> completeSubmission(
       std::int64_t id,
       const JudgeRunResult& result) override;
+  std::size_t recoverInterruptedSubmissions();
+  std::size_t cleanupSourcesOlderThan(
+      std::chrono::system_clock::time_point cutoff);
   std::vector<Submission> listSubmissions() const override;
 
  private:
+  std::chrono::system_clock::time_point now() const;
+
   mutable std::mutex mutex_;
+  Clock clock_;
   std::int64_t nextId_ = 1;
   std::unordered_map<std::int64_t, Submission> submissionsById_;
 };
 
 class SubmissionService {
  public:
+  using Clock = std::function<std::chrono::system_clock::time_point()>;
+
   explicit SubmissionService(std::shared_ptr<ISubmissionRepository> submissions,
-                             int sourceSizeLimitKb = 64);
+                             int sourceSizeLimitKb = 64,
+                             std::chrono::seconds submitInterval =
+                                 std::chrono::seconds(0),
+                             Clock clock = [] {
+                               return std::chrono::system_clock::now();
+                             });
 
   SubmissionResult createSubmission(const Actor& actor,
                                     std::int64_t problemId,
@@ -109,6 +130,8 @@ class SubmissionService {
   SubmissionResult getSubmission(const Actor& actor,
                                  std::int64_t submissionId) const;
   SubmissionListResult listSubmissions(const Actor& actor) const;
+  std::size_t recoverInterruptedSubmissions();
+  std::size_t cleanupExpiredSources(std::chrono::hours retention);
 
  private:
   SubmissionResult failure(SubmissionError error) const;
@@ -116,6 +139,11 @@ class SubmissionService {
 
   std::shared_ptr<ISubmissionRepository> submissions_;
   int sourceSizeLimitKb_ = 64;
+  std::chrono::seconds submitInterval_{0};
+  Clock clock_;
+  mutable std::mutex limiterMutex_;
+  std::unordered_map<std::int64_t, std::chrono::system_clock::time_point>
+      lastSubmissionByUser_;
 };
 
 std::string submissionErrorMessage(SubmissionError error);

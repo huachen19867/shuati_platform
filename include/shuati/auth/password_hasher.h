@@ -5,12 +5,12 @@
 
 namespace shuati::auth {
 
-class Sha256PasswordHasher {
+class PasswordHasher {
  public:
   using SaltGenerator = std::function<std::string()>;
 
-  Sha256PasswordHasher();
-  explicit Sha256PasswordHasher(SaltGenerator saltGenerator);
+  PasswordHasher();
+  explicit PasswordHasher(SaltGenerator saltGenerator);
 
   std::string hashPassword(const std::string& password) const;
   bool verifyPassword(const std::string& password,
@@ -19,5 +19,7 @@ class Sha256PasswordHasher {
  private:
   SaltGenerator saltGenerator_;
 };
+
+using Sha256PasswordHasher = PasswordHasher;
 
 }  // namespace shuati::auth

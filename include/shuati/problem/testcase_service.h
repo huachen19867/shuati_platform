@@ -25,6 +25,11 @@ struct TestcaseMeta {
   std::uintmax_t outputSize = 0;
 };
 
+struct TestcaseLimits {
+  std::size_t maxFiles = 100;
+  std::uintmax_t maxPackageBytes = 20U * 1024U * 1024U;
+};
+
 struct TestcasePackageResult {
   bool ok = false;
   TestcaseError error = TestcaseError::None;
@@ -34,7 +39,8 @@ struct TestcasePackageResult {
 
 class TestcaseService {
  public:
-  explicit TestcaseService(std::string testcaseRoot);
+  explicit TestcaseService(std::string testcaseRoot,
+                           TestcaseLimits limits = TestcaseLimits{});
 
   TestcasePackageResult replaceTestcases(
       std::int64_t problemId,
@@ -47,6 +53,7 @@ class TestcaseService {
   std::string problemDir(std::int64_t problemId) const;
 
   std::string testcaseRoot_;
+  TestcaseLimits limits_;
 };
 
 std::string testcaseErrorMessage(TestcaseError error);

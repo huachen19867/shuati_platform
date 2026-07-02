@@ -92,3 +92,26 @@ TEST(TestcaseServiceTest, ListsStoredTestcasesInCaseOrder) {
 
   std::filesystem::remove_all(root);
 }
+
+TEST(TestcaseServiceTest, RejectsPackagesOverCountOrSizeLimits) {
+  const auto root = tempRoot();
+  shuati::problem::TestcaseLimits limits;
+  limits.maxFiles = 2;
+  limits.maxPackageBytes = 8;
+  shuati::problem::TestcaseService service(root.string(), limits);
+
+  const auto tooMany = service.replaceTestcases(
+      7, {{"1.in", "1\n"}, {"1.out", "1\n"}, {"2.in", "2\n"},
+          {"2.out", "2\n"}});
+  const auto tooLarge =
+      service.replaceTestcases(8, {{"1.in", "12345678\n"}, {"1.out", "1\n"}});
+
+  EXPECT_FALSE(tooMany.ok);
+  EXPECT_EQ(tooMany.error, shuati::problem::TestcaseError::InvalidPackage);
+  EXPECT_NE(tooMany.message.find("too many"), std::string::npos);
+  EXPECT_FALSE(tooLarge.ok);
+  EXPECT_EQ(tooLarge.error, shuati::problem::TestcaseError::InvalidPackage);
+  EXPECT_NE(tooLarge.message.find("too large"), std::string::npos);
+
+  std::filesystem::remove_all(root);
+}

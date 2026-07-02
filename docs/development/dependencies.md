@@ -18,7 +18,10 @@ sudo apt install -y \
   libssl-dev \
   docker.io \
   unzip \
-  curl
+  curl \
+  python3-pip \
+  python3-venv \
+  python3-requests
 ```
 
 Why each dependency exists:
@@ -32,10 +35,34 @@ Why each dependency exists:
 - `docker.io`: Docker sandbox runtime for judge workers.
 - `unzip`: testcase zip validation and extraction.
 - `curl`: API smoke tests and dependency diagnostics.
+- `python3-pip`, `python3-venv`: Playwright browser smoke setup.
+- `python3-requests`: reusable API smoke tests.
 
-## bcrypt Plan
+## Runtime Libraries And Browser Assets
 
-The current Ubuntu apt cache did not expose a suitable `libbcrypt-dev` package. For the authentication phase, vendor a small bcrypt implementation under `third_party/` and record its upstream URL, version or commit, and license before use. Do not store passwords with a home-grown hash.
+- Password hashing uses the system `libcrypt` implementation through `crypt_r`
+  and stores `$2b$10$...` bcrypt hashes. CMake links `crypt` explicitly.
+- Existing `sha256$salt$digest` hashes are still verified so early MVP data can
+  be migrated by a later password change or rehash flow.
+- The code editor loads Ace.js `1.32.9` from the cdnjs URL embedded in
+  `public/index.html`: `https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.9/ace.js`.
+  Keep this version pinned when changing the frontend.
+
+## Playwright Smoke Dependency
+
+The browser smoke test is intentionally kept as a plain Python script:
+
+```bash
+python3 -m pip install --user playwright
+python3 -m playwright install chromium
+sudo python3 -m playwright install-deps chromium
+scripts/web_smoke_p5.py
+```
+
+If Playwright is not installed, the script exits with the install hint instead
+of silently skipping the check. If Chromium cannot start because libraries such
+as `libnspr4.so` are missing, run the `install-deps` command from an interactive
+sudo terminal and rerun the smoke.
 
 ## Current Environment Note
 

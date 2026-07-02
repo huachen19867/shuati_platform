@@ -28,7 +28,7 @@ std::string sha256Hex(const std::string& value) {
   return bytesToHex(digest, SHA256_DIGEST_LENGTH);
 }
 
-std::string randomHex(std::size_t byteCount) {
+std::string randomBytes(std::size_t byteCount) {
   if (byteCount == 0) {
     throw std::invalid_argument("random byte count must be positive");
   }
@@ -40,6 +40,11 @@ std::string randomHex(std::size_t byteCount) {
   for (auto& ch : bytes) {
     ch = static_cast<char>(dist(device));
   }
+  return bytes;
+}
+
+std::string randomHex(std::size_t byteCount) {
+  const auto bytes = randomBytes(byteCount);
   return bytesToHex(reinterpret_cast<const unsigned char*>(bytes.data()),
                     bytes.size());
 }

@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+using namespace std::chrono_literals;
+
 namespace {
 
 shuati::judge::Actor user(std::int64_t id) {
@@ -96,4 +98,65 @@ TEST(SubmissionServiceTest, CompletesSubmissionWithJudgeResult) {
   EXPECT_EQ(completed.submission.totalTimeMs, 12);
   ASSERT_EQ(completed.submission.cases.size(), 1U);
   EXPECT_EQ(completed.submission.cases[0].caseIndex, 1);
+}
+
+TEST(SubmissionServiceTest, RejectsTooFrequentSubmissionsBySameUser) {
+  std::chrono::system_clock::time_point now{100s};
+  auto repository =
+      std::make_shared<shuati::judge::InMemorySubmissionRepository>(
+          [&now] { return now; });
+  shuati::judge::SubmissionService service(
+      repository, 64, 5s, [&now] { return now; });
+
+  const auto first =
+      service.createSubmission(user(5), 9, "cpp", "int main(){}");
+  const auto second =
+      service.createSubmission(user(5), 9, "cpp", "int main(){}");
+  now += 6s;
+  const auto third =
+      service.createSubmission(user(5), 9, "cpp", "int main(){}");
+
+  EXPECT_TRUE(first.ok);
+  EXPECT_FALSE(second.ok);
+  EXPECT_EQ(second.error, shuati::judge::SubmissionError::RateLimited);
+  EXPECT_TRUE(third.ok);
+}
+
+TEST(SubmissionServiceTest, RecoversInterruptedSubmissionsToPending) {
+  auto repository =
+      std::make_shared<shuati::judge::InMemorySubmissionRepository>();
+  shuati::judge::SubmissionService service(repository);
+  const auto created =
+      service.createSubmission(user(5), 9, "cpp", "int main(){}");
+  ASSERT_TRUE(created.ok);
+  ASSERT_TRUE(service.claimNextPending("worker-1").ok);
+
+  const auto recovered = service.recoverInterruptedSubmissions();
+  const auto detail = service.getSubmission(user(5), created.submission.id);
+
+  EXPECT_EQ(recovered, 1U);
+  ASSERT_TRUE(detail.ok);
+  EXPECT_EQ(detail.submission.status, shuati::judge::SubmissionStatus::Pending);
+}
+
+TEST(SubmissionServiceTest, CleansExpiredSourceButKeepsMetadata) {
+  std::chrono::system_clock::time_point now{100s};
+  auto repository =
+      std::make_shared<shuati::judge::InMemorySubmissionRepository>(
+          [&now] { return now; });
+  shuati::judge::SubmissionService service(
+      repository, 64, 0s, [&now] { return now; });
+  const auto created =
+      service.createSubmission(user(5), 9, "cpp", "int main(){}");
+  ASSERT_TRUE(created.ok);
+
+  now += 25h;
+  const auto cleaned = service.cleanupExpiredSources(24h);
+  const auto detail = service.getSubmission(user(5), created.submission.id);
+
+  EXPECT_EQ(cleaned, 1U);
+  ASSERT_TRUE(detail.ok);
+  EXPECT_TRUE(detail.submission.source.empty());
+  EXPECT_NE(detail.submission.sourceDeletedAt.time_since_epoch().count(), 0);
+  EXPECT_EQ(detail.submission.problemId, 9);
 }

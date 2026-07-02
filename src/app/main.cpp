@@ -1,5 +1,6 @@
 #include <exception>
 #include <chrono>
+#include <cstdint>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -41,12 +42,23 @@ int main(int argc, char** argv) {
     auto problems =
         std::make_shared<shuati::problem::InMemoryProblemRepository>();
     shuati::problem::ProblemService problemService(problems);
-    shuati::problem::TestcaseService testcaseService(
-        config.storage.testcaseDir);
+    shuati::problem::TestcaseLimits testcaseLimits;
+    testcaseLimits.maxPackageBytes =
+        static_cast<std::uintmax_t>(config.security.uploadMaxMb) * 1024U * 1024U;
+    shuati::problem::TestcaseService testcaseService(config.storage.testcaseDir,
+                                                     testcaseLimits);
     auto submissions =
         std::make_shared<shuati::judge::InMemorySubmissionRepository>();
     shuati::judge::SubmissionService submissionService(
-        submissions, config.judge.sourceSizeLimitKb);
+        submissions, config.judge.sourceSizeLimitKb,
+        std::chrono::seconds(config.security.submitIntervalSeconds));
+    const auto recovered = submissionService.recoverInterruptedSubmissions();
+    if (recovered > 0) {
+      loggers.judge.warn("recovered interrupted submissions: " +
+                         std::to_string(recovered));
+    }
+    submissionService.cleanupExpiredSources(
+        std::chrono::hours(config.storage.sourceRetentionHours));
     shuati::judge::LocalCppRunner runner(
         shuati::judge::LocalCppRunnerConfig{
             "g++", config.judge.tempDir, config.judge.compileTimeoutMs,

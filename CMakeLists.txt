@@ -14,6 +14,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(SHUATI_BUILD_TESTS "Build unit tests" ON)
 
 find_package(OpenSSL REQUIRED)
+find_library(CRYPT_LIBRARY crypt REQUIRED)
 
 add_library(shuati_core
   src/app/app_config.cpp
@@ -27,6 +28,7 @@ add_library(shuati_core
   src/common/crypto.cpp
   src/common/json_response.cpp
   src/common/logging.cpp
+  src/common/rate_limiter.cpp
   src/judge/judge_types.cpp
   src/judge/local_cpp_runner.cpp
   src/judge/submission_service.cpp
@@ -43,6 +45,7 @@ target_include_directories(shuati_core
 target_link_libraries(shuati_core
   PUBLIC
     OpenSSL::Crypto
+    ${CRYPT_LIBRARY}
 )
 
 add_executable(shuati_server
@@ -66,7 +69,9 @@ if(SHUATI_BUILD_TESTS)
     tests/unit/json_response_test.cpp
     tests/unit/local_cpp_runner_test.cpp
     tests/unit/logging_test.cpp
+    tests/unit/password_hasher_test.cpp
     tests/unit/problem_service_test.cpp
+    tests/unit/rate_limiter_test.cpp
     tests/unit/role_test.cpp
     tests/unit/server_test.cpp
     tests/unit/session_manager_test.cpp

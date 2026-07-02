@@ -12,7 +12,10 @@ sudo apt install -y \
   libssl-dev \
   docker.io \
   unzip \
-  curl
+  curl \
+  python3-pip \
+  python3-venv \
+  python3-requests
 
 echo "Dependencies installed. You may need to add your user to the docker group:"
 echo "  sudo usermod -aG docker $USER"

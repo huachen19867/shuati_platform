@@ -2,6 +2,7 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+build_dir="${BUILD_DIR:-$repo_root/build/p5p7}"
 smoke="${TMPDIR:-/tmp}/shuati-p3p4-smoke"
 
 rm -rf "$smoke"
@@ -59,7 +60,7 @@ bootstrap:
     password: "secret123"
 CFG
 
-"$repo_root/build/p3p4/shuati_server" --config "$smoke/app.yaml" \
+"$build_dir/shuati_server" --config "$smoke/app.yaml" \
   > "$smoke/server.out" 2>&1 &
 pid=$!
 trap 'kill "$pid" >/dev/null 2>&1 || true; wait "$pid" >/dev/null 2>&1 || true' EXIT

@@ -68,8 +68,9 @@ TestcaseMeta metaFor(const std::filesystem::path& dir, int caseIndex) {
 
 }  // namespace
 
-TestcaseService::TestcaseService(std::string testcaseRoot)
-    : testcaseRoot_(std::move(testcaseRoot)) {}
+TestcaseService::TestcaseService(std::string testcaseRoot,
+                                 TestcaseLimits limits)
+    : testcaseRoot_(std::move(testcaseRoot)), limits_(limits) {}
 
 TestcasePackageResult TestcaseService::replaceTestcases(
     std::int64_t problemId,
@@ -78,9 +79,19 @@ TestcasePackageResult TestcaseService::replaceTestcases(
     return failure(TestcaseError::InvalidPackage,
                    "testcase package must not be empty");
   }
+  if (files.size() > limits_.maxFiles) {
+    return failure(TestcaseError::InvalidPackage,
+                   "too many testcase files");
+  }
 
   std::map<int, PairContent> pairs;
+  std::uintmax_t packageBytes = 0;
   for (const auto& file : files) {
+    packageBytes += file.content.size();
+    if (packageBytes > limits_.maxPackageBytes) {
+      return failure(TestcaseError::InvalidPackage,
+                     "testcase package is too large");
+    }
     const auto parsed = parseName(file.name);
     if (!parsed.has_value()) {
       return failure(TestcaseError::InvalidPackage,

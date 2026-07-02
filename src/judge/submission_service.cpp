@@ -5,14 +5,17 @@
 namespace shuati::judge {
 namespace {
 
-Submission withTimestamps(Submission submission) {
-  const auto now = std::chrono::system_clock::now();
+Submission withTimestamps(Submission submission,
+                          std::chrono::system_clock::time_point now) {
   submission.createdAt = now;
   submission.updatedAt = now;
   return submission;
 }
 
 }  // namespace
+
+InMemorySubmissionRepository::InMemorySubmissionRepository(Clock clock)
+    : clock_(std::move(clock)) {}
 
 Submission InMemorySubmissionRepository::createSubmission(
     std::int64_t userId,
@@ -27,7 +30,7 @@ Submission InMemorySubmissionRepository::createSubmission(
   submission.language = language;
   submission.source = source;
   submission.status = SubmissionStatus::Pending;
-  submission = withTimestamps(submission);
+  submission = withTimestamps(submission, now());
   submissionsById_[submission.id] = submission;
   return submission;
 }
@@ -59,7 +62,7 @@ std::optional<Submission> InMemorySubmissionRepository::claimNextPending(
   }
   best->second.status = SubmissionStatus::Running;
   best->second.workerId = workerId;
-  best->second.updatedAt = std::chrono::system_clock::now();
+  best->second.updatedAt = now();
   return best->second;
 }
 
@@ -76,8 +79,40 @@ std::optional<Submission> InMemorySubmissionRepository::completeSubmission(
   it->second.totalTimeMs = result.totalTimeMs;
   it->second.maxMemoryKb = result.maxMemoryKb;
   it->second.cases = result.cases;
-  it->second.updatedAt = std::chrono::system_clock::now();
+  it->second.updatedAt = now();
   return it->second;
+}
+
+std::size_t InMemorySubmissionRepository::recoverInterruptedSubmissions() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  std::size_t recovered = 0;
+  for (auto& [id, submission] : submissionsById_) {
+    (void)id;
+    if (submission.status == SubmissionStatus::Compiling ||
+        submission.status == SubmissionStatus::Running) {
+      submission.status = SubmissionStatus::Pending;
+      submission.workerId.clear();
+      submission.updatedAt = now();
+      ++recovered;
+    }
+  }
+  return recovered;
+}
+
+std::size_t InMemorySubmissionRepository::cleanupSourcesOlderThan(
+    std::chrono::system_clock::time_point cutoff) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  std::size_t cleaned = 0;
+  for (auto& [id, submission] : submissionsById_) {
+    (void)id;
+    if (!submission.source.empty() && submission.createdAt <= cutoff) {
+      submission.source.clear();
+      submission.sourceDeletedAt = now();
+      submission.updatedAt = submission.sourceDeletedAt;
+      ++cleaned;
+    }
+  }
+  return cleaned;
 }
 
 std::vector<Submission> InMemorySubmissionRepository::listSubmissions() const {
@@ -95,11 +130,19 @@ std::vector<Submission> InMemorySubmissionRepository::listSubmissions() const {
   return submissions;
 }
 
+std::chrono::system_clock::time_point InMemorySubmissionRepository::now() const {
+  return clock_();
+}
+
 SubmissionService::SubmissionService(
     std::shared_ptr<ISubmissionRepository> submissions,
-    int sourceSizeLimitKb)
+    int sourceSizeLimitKb,
+    std::chrono::seconds submitInterval,
+    Clock clock)
     : submissions_(std::move(submissions)),
-      sourceSizeLimitKb_(sourceSizeLimitKb) {}
+      sourceSizeLimitKb_(sourceSizeLimitKb),
+      submitInterval_(submitInterval),
+      clock_(std::move(clock)) {}
 
 SubmissionResult SubmissionService::createSubmission(
     const Actor& actor,
@@ -111,6 +154,16 @@ SubmissionResult SubmissionService::createSubmission(
       source.size() >
           static_cast<std::size_t>(sourceSizeLimitKb_) * 1024U) {
     return failure(SubmissionError::InvalidInput);
+  }
+  if (submitInterval_.count() > 0) {
+    std::lock_guard<std::mutex> lock(limiterMutex_);
+    const auto now = clock_();
+    const auto it = lastSubmissionByUser_.find(actor.userId);
+    if (it != lastSubmissionByUser_.end() &&
+        now - it->second < submitInterval_) {
+      return failure(SubmissionError::RateLimited);
+    }
+    lastSubmissionByUser_[actor.userId] = now;
   }
   return SubmissionResult{
       true, SubmissionError::None, "ok",
@@ -173,6 +226,25 @@ SubmissionListResult SubmissionService::listSubmissions(
   return result;
 }
 
+std::size_t SubmissionService::recoverInterruptedSubmissions() {
+  auto* inMemory =
+      dynamic_cast<InMemorySubmissionRepository*>(submissions_.get());
+  if (inMemory == nullptr) {
+    return 0;
+  }
+  return inMemory->recoverInterruptedSubmissions();
+}
+
+std::size_t SubmissionService::cleanupExpiredSources(
+    std::chrono::hours retention) {
+  auto* inMemory =
+      dynamic_cast<InMemorySubmissionRepository*>(submissions_.get());
+  if (inMemory == nullptr) {
+    return 0;
+  }
+  return inMemory->cleanupSourcesOlderThan(clock_() - retention);
+}
+
 SubmissionResult SubmissionService::failure(SubmissionError error) const {
   return SubmissionResult{false, error, submissionErrorMessage(error), {}};
 }
@@ -194,6 +266,8 @@ std::string submissionErrorMessage(SubmissionError error) {
       return "submission not found";
     case SubmissionError::NoPendingTask:
       return "no pending judge task";
+    case SubmissionError::RateLimited:
+      return "too many submissions, please try again later";
   }
   return "unknown submission error";
 }

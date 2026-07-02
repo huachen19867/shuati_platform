@@ -11,6 +11,7 @@
 
 #include "shuati/auth/role.h"
 #include "shuati/common/json_response.h"
+#include "shuati/common/rate_limiter.h"
 
 namespace shuati::app {
 namespace {
@@ -200,6 +201,8 @@ int submissionStatus(shuati::judge::SubmissionError error) {
       return 404;
     case shuati::judge::SubmissionError::NoPendingTask:
       return 409;
+    case shuati::judge::SubmissionError::RateLimited:
+      return 429;
   }
   return 500;
 }
@@ -329,6 +332,11 @@ std::string sessionToken(const httplib::Request& request) {
   return request.get_header_value("X-Session-Token");
 }
 
+std::string clientKey(const httplib::Request& request,
+                      const std::string& action) {
+  return action + ":" + request.remote_addr;
+}
+
 std::string unixSeconds(std::chrono::system_clock::time_point value) {
   return std::to_string(std::chrono::duration_cast<std::chrono::seconds>(
                             value.time_since_epoch())
@@ -388,8 +396,20 @@ std::optional<shuati::problem::ProblemDraft> problemDraftFromBody(
 
 void registerAuthRoutes(httplib::Server& server,
                         shuati::auth::AuthService& authService) {
-  server.Post("/api/auth/register", [&authService](const httplib::Request& req,
-                                                   httplib::Response& res) {
+  auto registerLimiter = std::make_shared<shuati::common::FixedWindowRateLimiter>(
+      5, std::chrono::minutes(1));
+  auto loginLimiter = std::make_shared<shuati::common::FixedWindowRateLimiter>(
+      20, std::chrono::minutes(1));
+
+  server.Post("/api/auth/register", [&authService, registerLimiter](
+                                      const httplib::Request& req,
+                                      httplib::Response& res) {
+    if (!registerLimiter->allow(clientKey(req, "register"))) {
+      setJson(res, 429,
+              shuati::common::makeJsonResponse(
+                  429, "too many register requests, please try again later"));
+      return;
+    }
     const auto username = extractJsonString(req.body, "username");
     const auto password = extractJsonString(req.body, "password");
     if (!username.has_value() || !password.has_value()) {
@@ -408,8 +428,15 @@ void registerAuthRoutes(httplib::Server& server,
                 0, "ok", "{\"user\":" + userJson(result.user) + "}"));
   });
 
-  server.Post("/api/auth/login", [&authService](const httplib::Request& req,
-                                                httplib::Response& res) {
+  server.Post("/api/auth/login", [&authService, loginLimiter](
+                                   const httplib::Request& req,
+                                   httplib::Response& res) {
+    if (!loginLimiter->allow(clientKey(req, "login"))) {
+      setJson(res, 429,
+              shuati::common::makeJsonResponse(
+                  429, "too many login requests, please try again later"));
+      return;
+    }
     const auto username = extractJsonString(req.body, "username");
     const auto password = extractJsonString(req.body, "password");
     if (!username.has_value() || !password.has_value()) {
@@ -597,10 +624,20 @@ void registerProblemRoutes(httplib::Server& server,
              });
 
   if (testcaseService != nullptr) {
+    auto uploadLimiter =
+        std::make_shared<shuati::common::FixedWindowRateLimiter>(
+            10, std::chrono::minutes(1));
     server.Post(R"(/api/admin/problems/(\d+)/testcases)",
                 [authService, &problemService,
-                 testcaseService](const httplib::Request& req,
-                                  httplib::Response& res) {
+                 testcaseService, uploadLimiter](const httplib::Request& req,
+                                                 httplib::Response& res) {
+                  if (!uploadLimiter->allow(clientKey(req, "testcase-upload"))) {
+                    setJson(res, 429,
+                            shuati::common::makeJsonResponse(
+                                429,
+                                "too many testcase uploads, please try again later"));
+                    return;
+                  }
                   const auto user = currentUser(req, res, authService);
                   if (!user.has_value()) {
                     return;
@@ -666,10 +703,20 @@ void registerSubmissionRoutes(
     shuati::problem::TestcaseService& testcaseService,
     shuati::judge::SubmissionService& submissionService,
     shuati::judge::LocalCppRunner& runner) {
+  auto submitLimiter = std::make_shared<shuati::common::FixedWindowRateLimiter>(
+      30, std::chrono::minutes(1));
   server.Post(R"(/api/problems/(\d+)/submissions)",
               [authService, &problemService, &testcaseService,
-               &submissionService, &runner](const httplib::Request& req,
-                                            httplib::Response& res) {
+               &submissionService, &runner,
+               submitLimiter](const httplib::Request& req,
+                              httplib::Response& res) {
+                if (!submitLimiter->allow(clientKey(req, "submit"))) {
+                  setJson(res, 429,
+                          shuati::common::makeJsonResponse(
+                              429,
+                              "too many submissions, please try again later"));
+                  return;
+                }
                 const auto user = currentUser(req, res, authService);
                 if (!user.has_value()) {
                   return;
