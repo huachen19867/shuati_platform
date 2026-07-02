@@ -32,6 +32,7 @@ storage:
   source_retention_hours: 24
 
 logs:
+  level: "info"
   access: "logs/access.log"
   error: "logs/error.log"
   judge: "logs/judge.log"

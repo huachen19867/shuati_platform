@@ -14,7 +14,11 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(SHUATI_BUILD_TESTS "Build unit tests" ON)
 
 add_library(shuati_core
+  src/app/app_config.cpp
+  src/app/server.cpp
   src/common/config.cpp
+  src/common/json_response.cpp
+  src/common/logging.cpp
 )
 
 target_include_directories(shuati_core
@@ -37,7 +41,11 @@ if(SHUATI_BUILD_TESTS)
   find_package(GTest REQUIRED)
 
   add_executable(shuati_tests
+    tests/unit/app_config_test.cpp
     tests/unit/config_test.cpp
+    tests/unit/json_response_test.cpp
+    tests/unit/logging_test.cpp
+    tests/unit/server_test.cpp
   )
 
   target_link_libraries(shuati_tests
