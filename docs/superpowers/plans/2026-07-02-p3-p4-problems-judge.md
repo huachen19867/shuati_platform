@@ -169,6 +169,6 @@ Expected: all tests pass.
 
 Start `build/p3p4/shuati_server --config config/app.yaml`, use curl to login as root, create a problem, upload testcases, register/login a user, submit accepted code, and query submission detail.
 
-- [ ] **Step 5: Commit and push**
+- [x] **Step 5: Commit and push**
 
 Run: `git status --short`, `git add ...`, `git commit -m 'feat: add p3 p4 problem and judge flow'`, and push to `origin/main`.
