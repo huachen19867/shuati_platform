@@ -4,6 +4,7 @@
 
 #include "httplib.h"
 #include "shuati/app/app_config.h"
+#include "shuati/auth/auth_service.h"
 #include "shuati/common/logging.h"
 
 namespace shuati::app {
@@ -20,6 +21,7 @@ class AppLoggers {
 std::string buildHealthResponse(const AppConfig& config);
 void configureServer(httplib::Server& server,
                      const AppConfig& config,
-                     AppLoggers& loggers);
+                     AppLoggers& loggers,
+                     shuati::auth::AuthService* authService = nullptr);
 
 }  // namespace shuati::app

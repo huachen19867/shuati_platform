@@ -71,3 +71,43 @@ TEST(AppConfigTest, UsesP1DefaultsForMissingOptionalValues) {
 
   std::filesystem::remove(path);
 }
+
+TEST(AppConfigTest, LoadsDatabaseSecurityAndBootstrapValues) {
+  const auto path = writeTempConfig(R"CFG(
+database:
+  host: "db.internal"
+  port: 3307
+  name: "oj_test"
+  user: "oj_user"
+  password: "oj_pass"
+  pool_size: 8
+  acquire_timeout_ms: 1500
+security:
+  session_ttl_hours: 24
+  submit_interval_seconds: 3
+  upload_max_mb: 32
+bootstrap:
+  super_admin:
+    enabled: true
+    username: "boss"
+    password: "boss-password"
+)CFG");
+
+  const auto config = shuati::app::AppConfig::loadFromFile(path.string());
+
+  EXPECT_EQ(config.database.host, "db.internal");
+  EXPECT_EQ(config.database.port, 3307);
+  EXPECT_EQ(config.database.name, "oj_test");
+  EXPECT_EQ(config.database.user, "oj_user");
+  EXPECT_EQ(config.database.password, "oj_pass");
+  EXPECT_EQ(config.database.poolSize, 8);
+  EXPECT_EQ(config.database.acquireTimeoutMs, 1500);
+  EXPECT_EQ(config.security.sessionTtlHours, 24);
+  EXPECT_EQ(config.security.submitIntervalSeconds, 3);
+  EXPECT_EQ(config.security.uploadMaxMb, 32);
+  EXPECT_TRUE(config.superAdmin.enabled);
+  EXPECT_EQ(config.superAdmin.username, "boss");
+  EXPECT_EQ(config.superAdmin.password, "boss-password");
+
+  std::filesystem::remove(path);
+}

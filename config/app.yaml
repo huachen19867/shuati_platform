@@ -41,3 +41,9 @@ security:
   session_ttl_hours: 168
   submit_interval_seconds: 5
   upload_max_mb: 20
+
+bootstrap:
+  super_admin:
+    enabled: true
+    username: "root"
+    password: "change-me-now"
