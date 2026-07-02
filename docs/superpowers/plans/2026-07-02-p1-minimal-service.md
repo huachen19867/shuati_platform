@@ -70,4 +70,4 @@
 - [ ] Update the technical log with implementation notes, commands, and blockers.
 - [x] Run `git diff --check`.
 - [x] Run CMake/build/tests if `g++` is available; otherwise capture the exact blocker.
-- [ ] Commit and push to GitHub.
+- [x] Commit and push to GitHub.
