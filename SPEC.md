@@ -482,8 +482,8 @@ MVP 完成时应满足：
 
 ### P0：仓库与开发基线
 
-- [ ] 确认 GitHub 远程仓库：`https://github.com/huachen19867/shuati_platform`。
-- [ ] 将本地 `main` 首次推送到 GitHub：`git push -u origin main`。
+- [x] 确认 GitHub 远程仓库：`https://github.com/huachen19867/shuati_platform`。
+- [x] 将本地 `main` 首次推送到 GitHub：`git push -u origin main`。
 - [ ] 创建基础目录：`src/`、`public/`、`config/`、`data/`、`logs/`、`tests/`、`third_party/`、`scripts/`。
 - [ ] 建立 CMake 最小工程，能编译出后端可执行文件。
 - [ ] 放入 `cpp-httplib` 单头文件，并记录来源和版本。
