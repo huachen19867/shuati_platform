@@ -1,6 +1,10 @@
 #include "shuati/judge/submission_service.h"
 
 #include <algorithm>
+#include <sstream>
+#include <stdexcept>
+
+#include "shuati/common/state_file.h"
 
 namespace shuati::judge {
 namespace {
@@ -14,8 +18,112 @@ Submission withTimestamps(Submission submission,
 
 }  // namespace
 
-InMemorySubmissionRepository::InMemorySubmissionRepository(Clock clock)
-    : clock_(std::move(clock)) {}
+InMemorySubmissionRepository::InMemorySubmissionRepository(
+    Clock clock,
+    std::filesystem::path persistencePath)
+    : clock_(std::move(clock)), persistencePath_(std::move(persistencePath)) {
+  load();
+}
+
+void InMemorySubmissionRepository::load() {
+  if (persistencePath_.empty()) return;
+  const auto content = shuati::common::readStateFile(persistencePath_);
+  if (content.empty()) return;
+  std::istringstream input(content);
+  std::string line;
+  std::getline(input, line);
+  if (line != "SHUATI_SUBMISSIONS_V1") {
+    throw std::runtime_error("unsupported submissions state format");
+  }
+  while (std::getline(input, line)) {
+    if (line.empty()) continue;
+    const auto fields = shuati::common::splitStateLine(line);
+    if (fields.size() != 15 || fields[0] != "S") {
+      throw std::runtime_error("corrupt submission state record");
+    }
+    const auto status = parseSubmissionStatus(fields[5]);
+    if (!status.has_value()) {
+      throw std::runtime_error("corrupt submission status");
+    }
+    Submission submission;
+    submission.id = std::stoll(fields[1]);
+    submission.userId = std::stoll(fields[2]);
+    submission.problemId = std::stoll(fields[3]);
+    submission.language = shuati::common::hexDecode(fields[4]);
+    submission.status = *status;
+    submission.workerId = shuati::common::hexDecode(fields[6]);
+    submission.compileMessage = shuati::common::hexDecode(fields[7]);
+    submission.totalTimeMs = std::stoi(fields[8]);
+    submission.maxMemoryKb = std::stoi(fields[9]);
+    submission.createdAt = shuati::common::timeFromEpochMilliseconds(
+        std::stoll(fields[10]));
+    submission.updatedAt = shuati::common::timeFromEpochMilliseconds(
+        std::stoll(fields[11]));
+    submission.sourceDeletedAt = shuati::common::timeFromEpochMilliseconds(
+        std::stoll(fields[12]));
+    submission.source = shuati::common::hexDecode(fields[13]);
+    const auto caseCount = static_cast<std::size_t>(std::stoull(fields[14]));
+    for (std::size_t i = 0; i < caseCount; ++i) {
+      if (!std::getline(input, line)) {
+        throw std::runtime_error("missing submission case state record");
+      }
+      const auto caseFields = shuati::common::splitStateLine(line);
+      if (caseFields.size() != 8 || caseFields[0] != "C") {
+        throw std::runtime_error("corrupt submission case state record");
+      }
+      const auto caseStatus = parseSubmissionStatus(caseFields[2]);
+      if (!caseStatus.has_value()) {
+        throw std::runtime_error("corrupt submission case status");
+      }
+      JudgeCaseResult caseResult;
+      caseResult.caseIndex = std::stoi(caseFields[1]);
+      caseResult.status = *caseStatus;
+      caseResult.timeMs = std::stoi(caseFields[3]);
+      caseResult.memoryKb = std::stoi(caseFields[4]);
+      caseResult.errorType = shuati::common::hexDecode(caseFields[5]);
+      caseResult.message = shuati::common::hexDecode(caseFields[6]);
+      caseResult.stderrText = shuati::common::hexDecode(caseFields[7]);
+      submission.cases.push_back(std::move(caseResult));
+    }
+    submissionsById_[submission.id] = submission;
+    nextId_ = std::max(nextId_, submission.id + 1);
+  }
+}
+
+void InMemorySubmissionRepository::persistLocked() const {
+  if (persistencePath_.empty()) return;
+  std::vector<Submission> submissions;
+  submissions.reserve(submissionsById_.size());
+  for (const auto& item : submissionsById_) submissions.push_back(item.second);
+  std::sort(submissions.begin(), submissions.end(), [](const auto& left, const auto& right) {
+    return left.id < right.id;
+  });
+  std::ostringstream output;
+  output << "SHUATI_SUBMISSIONS_V1\n";
+  for (const auto& submission : submissions) {
+    output << "S\t" << submission.id << '\t' << submission.userId << '\t'
+           << submission.problemId << '\t'
+           << shuati::common::hexEncode(submission.language) << '\t'
+           << toString(submission.status) << '\t'
+           << shuati::common::hexEncode(submission.workerId) << '\t'
+           << shuati::common::hexEncode(submission.compileMessage) << '\t'
+           << submission.totalTimeMs << '\t' << submission.maxMemoryKb << '\t'
+           << shuati::common::epochMilliseconds(submission.createdAt) << '\t'
+           << shuati::common::epochMilliseconds(submission.updatedAt) << '\t'
+           << shuati::common::epochMilliseconds(submission.sourceDeletedAt) << '\t'
+           << shuati::common::hexEncode(submission.source) << '\t'
+           << submission.cases.size() << '\n';
+    for (const auto& caseResult : submission.cases) {
+      output << "C\t" << caseResult.caseIndex << '\t'
+             << toString(caseResult.status) << '\t' << caseResult.timeMs << '\t'
+             << caseResult.memoryKb << '\t'
+             << shuati::common::hexEncode(caseResult.errorType) << '\t'
+             << shuati::common::hexEncode(caseResult.message) << '\t'
+             << shuati::common::hexEncode(caseResult.stderrText) << '\n';
+    }
+  }
+  shuati::common::atomicWriteStateFile(persistencePath_, output.str());
+}
 
 Submission InMemorySubmissionRepository::createSubmission(
     std::int64_t userId,
@@ -32,6 +140,7 @@ Submission InMemorySubmissionRepository::createSubmission(
   submission.status = SubmissionStatus::Pending;
   submission = withTimestamps(submission, now());
   submissionsById_[submission.id] = submission;
+  persistLocked();
   return submission;
 }
 
@@ -63,7 +172,24 @@ std::optional<Submission> InMemorySubmissionRepository::claimNextPending(
   best->second.status = SubmissionStatus::Running;
   best->second.workerId = workerId;
   best->second.updatedAt = now();
+  persistLocked();
   return best->second;
+}
+
+std::optional<Submission> InMemorySubmissionRepository::claimPendingById(
+    std::int64_t id,
+    const std::string& workerId) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  const auto it = submissionsById_.find(id);
+  if (it == submissionsById_.end() ||
+      it->second.status != SubmissionStatus::Pending) {
+    return std::nullopt;
+  }
+  it->second.status = SubmissionStatus::Running;
+  it->second.workerId = workerId;
+  it->second.updatedAt = now();
+  persistLocked();
+  return it->second;
 }
 
 std::optional<Submission> InMemorySubmissionRepository::completeSubmission(
@@ -80,6 +206,7 @@ std::optional<Submission> InMemorySubmissionRepository::completeSubmission(
   it->second.maxMemoryKb = result.maxMemoryKb;
   it->second.cases = result.cases;
   it->second.updatedAt = now();
+  persistLocked();
   return it->second;
 }
 
@@ -96,6 +223,7 @@ std::size_t InMemorySubmissionRepository::recoverInterruptedSubmissions() {
       ++recovered;
     }
   }
+  if (recovered > 0) persistLocked();
   return recovered;
 }
 
@@ -112,6 +240,7 @@ std::size_t InMemorySubmissionRepository::cleanupSourcesOlderThan(
       ++cleaned;
     }
   }
+  if (cleaned > 0) persistLocked();
   return cleaned;
 }
 
@@ -176,6 +305,19 @@ SubmissionResult SubmissionService::claimNextPending(
     return failure(SubmissionError::InvalidInput);
   }
   const auto claimed = submissions_->claimNextPending(workerId);
+  if (!claimed.has_value()) {
+    return failure(SubmissionError::NoPendingTask);
+  }
+  return SubmissionResult{true, SubmissionError::None, "ok", *claimed};
+}
+
+SubmissionResult SubmissionService::claimPendingById(
+    std::int64_t submissionId,
+    const std::string& workerId) {
+  if (submissionId <= 0 || workerId.empty()) {
+    return failure(SubmissionError::InvalidInput);
+  }
+  const auto claimed = submissions_->claimPendingById(submissionId, workerId);
   if (!claimed.has_value()) {
     return failure(SubmissionError::NoPendingTask);
   }

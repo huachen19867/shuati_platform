@@ -29,7 +29,9 @@ add_library(shuati_core
   src/common/json_response.cpp
   src/common/logging.cpp
   src/common/rate_limiter.cpp
+  src/common/state_file.cpp
   src/judge/judge_types.cpp
+  src/judge/docker_cpp_runner.cpp
   src/judge/local_cpp_runner.cpp
   src/judge/submission_service.cpp
   src/problem/problem_service.cpp

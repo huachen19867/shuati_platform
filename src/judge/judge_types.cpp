@@ -30,6 +30,21 @@ std::string toString(SubmissionStatus status) {
   return "SystemError";
 }
 
+std::optional<SubmissionStatus> parseSubmissionStatus(const std::string& value) {
+  if (value == "Pending") return SubmissionStatus::Pending;
+  if (value == "Compiling") return SubmissionStatus::Compiling;
+  if (value == "Running") return SubmissionStatus::Running;
+  if (value == "Accepted") return SubmissionStatus::Accepted;
+  if (value == "WrongAnswer") return SubmissionStatus::WrongAnswer;
+  if (value == "TimeLimitExceeded") return SubmissionStatus::TimeLimitExceeded;
+  if (value == "MemoryLimitExceeded") return SubmissionStatus::MemoryLimitExceeded;
+  if (value == "RuntimeError") return SubmissionStatus::RuntimeError;
+  if (value == "CompileError") return SubmissionStatus::CompileError;
+  if (value == "OutputLimitExceeded") return SubmissionStatus::OutputLimitExceeded;
+  if (value == "SystemError") return SubmissionStatus::SystemError;
+  return std::nullopt;
+}
+
 bool isFinalStatus(SubmissionStatus status) {
   return status != SubmissionStatus::Pending &&
          status != SubmissionStatus::Compiling &&

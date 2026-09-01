@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <filesystem>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -89,6 +90,8 @@ class IProblemRepository {
 
 class InMemoryProblemRepository : public IProblemRepository {
  public:
+  explicit InMemoryProblemRepository(
+      std::filesystem::path persistencePath = {});
   Problem createProblem(const ProblemDraft& draft,
                         std::int64_t createdBy) override;
   std::optional<Problem> updateProblem(std::int64_t id,
@@ -97,7 +100,11 @@ class InMemoryProblemRepository : public IProblemRepository {
   std::vector<Problem> listProblems() const override;
 
  private:
+  void load();
+  void persistLocked() const;
+
   mutable std::mutex mutex_;
+  std::filesystem::path persistencePath_;
   std::int64_t nextId_ = 1;
   std::unordered_map<std::int64_t, Problem> problemsById_;
 };

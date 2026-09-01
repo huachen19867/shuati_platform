@@ -2,6 +2,8 @@
 
 #include <gtest/gtest.h>
 
+#include <chrono>
+#include <filesystem>
 #include <memory>
 #include <string>
 #include <vector>
@@ -98,6 +100,57 @@ TEST(SubmissionServiceTest, CompletesSubmissionWithJudgeResult) {
   EXPECT_EQ(completed.submission.totalTimeMs, 12);
   ASSERT_EQ(completed.submission.cases.size(), 1U);
   EXPECT_EQ(completed.submission.cases[0].caseIndex, 1);
+}
+
+TEST(SubmissionServiceTest, ClaimsTheRequestedSubmissionWithoutStealingAnother) {
+  auto repository =
+      std::make_shared<shuati::judge::InMemorySubmissionRepository>();
+  shuati::judge::SubmissionService service(repository);
+  const auto first = service.createSubmission(user(5), 9, "cpp", "first");
+  const auto second = service.createSubmission(user(6), 9, "cpp", "second");
+  ASSERT_TRUE(first.ok);
+  ASSERT_TRUE(second.ok);
+
+  const auto claimed =
+      service.claimPendingById(second.submission.id, "inline-http");
+
+  ASSERT_TRUE(claimed.ok);
+  EXPECT_EQ(claimed.submission.id, second.submission.id);
+  const auto remaining = service.claimNextPending("worker-2");
+  ASSERT_TRUE(remaining.ok);
+  EXPECT_EQ(remaining.submission.id, first.submission.id);
+}
+
+TEST(SubmissionServiceTest, CompletedSubmissionSurvivesRestart) {
+  const auto directory = std::filesystem::temp_directory_path() /
+                         ("shuati-submissions-state-" + std::to_string(
+                             std::chrono::steady_clock::now()
+                                 .time_since_epoch().count()));
+  const auto path = directory / "submissions.state";
+  {
+    auto repository =
+        std::make_shared<shuati::judge::InMemorySubmissionRepository>(
+            [] { return std::chrono::system_clock::now(); }, path);
+    shuati::judge::SubmissionService service(repository);
+    const auto created =
+        service.createSubmission(user(5), 9, "cpp", "int main(){}");
+    ASSERT_TRUE(created.ok);
+    ASSERT_TRUE(service.claimNextPending("worker-1").ok);
+    ASSERT_TRUE(
+        service.completeSubmission(created.submission.id, acceptedResult()).ok);
+  }
+  {
+    auto repository =
+        std::make_shared<shuati::judge::InMemorySubmissionRepository>(
+            [] { return std::chrono::system_clock::now(); }, path);
+    shuati::judge::SubmissionService service(repository);
+    const auto restored = service.getSubmission(user(5), 1);
+    ASSERT_TRUE(restored.ok);
+    EXPECT_EQ(restored.submission.status,
+              shuati::judge::SubmissionStatus::Accepted);
+    ASSERT_EQ(restored.submission.cases.size(), 1U);
+  }
+  std::filesystem::remove_all(directory);
 }
 
 TEST(SubmissionServiceTest, RejectsTooFrequentSubmissionsBySameUser) {

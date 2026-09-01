@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <filesystem>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -39,6 +40,8 @@ class IUserRepository {
 
 class InMemoryUserRepository : public IUserRepository {
  public:
+  explicit InMemoryUserRepository(
+      std::filesystem::path persistencePath = {});
   std::optional<UserRecord> createUser(const std::string& username,
                                        const std::string& passwordHash,
                                        UserRole role) override;
@@ -51,7 +54,11 @@ class InMemoryUserRepository : public IUserRepository {
   bool hasSuperAdmin() const override;
 
  private:
+  void load();
+  void persistLocked() const;
+
   mutable std::mutex mutex_;
+  std::filesystem::path persistencePath_;
   std::int64_t nextId_ = 1;
   std::unordered_map<std::int64_t, UserRecord> usersById_;
   std::unordered_map<std::string, std::int64_t> idsByUsername_;

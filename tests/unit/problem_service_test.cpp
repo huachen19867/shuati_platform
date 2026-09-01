@@ -2,6 +2,8 @@
 
 #include <gtest/gtest.h>
 
+#include <chrono>
+#include <filesystem>
 #include <memory>
 
 namespace {
@@ -48,6 +50,30 @@ TEST(ProblemServiceTest, AdminCanCreateAndUpdateProblem) {
   EXPECT_EQ(updated.problem.title, "A Plus B");
   EXPECT_EQ(updated.problem.tags.size(), 1U);
   EXPECT_EQ(updated.problem.tags[0], "math");
+}
+
+TEST(ProblemServiceTest, ProblemRepositorySurvivesRestart) {
+  const auto directory = std::filesystem::temp_directory_path() /
+                         ("shuati-problems-state-" + std::to_string(
+                             std::chrono::steady_clock::now()
+                                 .time_since_epoch().count()));
+  const auto path = directory / "problems.state";
+  {
+    auto repository =
+        std::make_shared<shuati::problem::InMemoryProblemRepository>(path);
+    shuati::problem::ProblemService service(repository);
+    ASSERT_TRUE(service.createProblem(adminActor(), sumDraft()).ok);
+  }
+  {
+    auto repository =
+        std::make_shared<shuati::problem::InMemoryProblemRepository>(path);
+    shuati::problem::ProblemService service(repository);
+    const auto restored = service.getProblem(1);
+    ASSERT_TRUE(restored.ok);
+    EXPECT_EQ(restored.problem.title, "Two Sum");
+    ASSERT_EQ(restored.problem.tags.size(), 2U);
+  }
+  std::filesystem::remove_all(directory);
 }
 
 TEST(ProblemServiceTest, NormalUserCannotManageProblems) {

@@ -36,6 +36,8 @@ struct SecurityConfig {
 };
 
 struct JudgeConfig {
+  std::string runner = "local";
+  std::string dockerBinary = "docker";
   std::string dockerImage = "shuati-cpp-judge:latest";
   int workers = 4;
   int sourceSizeLimitKb = 64;
@@ -52,6 +54,7 @@ struct StorageConfig {
   std::string testcaseDir = "data/testcases";
   std::string submissionDir = "data/submissions";
   int sourceRetentionHours = 24;
+  std::string stateDir = "data/state";
 };
 
 struct SuperAdminConfig {

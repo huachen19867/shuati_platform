@@ -44,6 +44,9 @@ AppConfig AppConfig::loadFromFile(const std::string& path) {
   config.security.uploadMaxMb =
       raw.getInt("security.upload_max_mb", config.security.uploadMaxMb);
 
+  config.judge.runner = raw.getString("judge.runner", config.judge.runner);
+  config.judge.dockerBinary =
+      raw.getString("judge.docker_binary", config.judge.dockerBinary);
   config.judge.dockerImage =
       raw.getString("judge.docker_image", config.judge.dockerImage);
   config.judge.workers = raw.getInt("judge.workers", config.judge.workers);
@@ -69,6 +72,8 @@ AppConfig AppConfig::loadFromFile(const std::string& path) {
       raw.getString("storage.submission_dir", config.storage.submissionDir);
   config.storage.sourceRetentionHours = raw.getInt(
       "storage.source_retention_hours", config.storage.sourceRetentionHours);
+  config.storage.stateDir =
+      raw.getString("storage.state_dir", config.storage.stateDir);
 
   config.superAdmin.enabled = raw.getBool(
       "bootstrap.super_admin.enabled", config.superAdmin.enabled);

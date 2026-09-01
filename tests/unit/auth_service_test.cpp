@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 #include <chrono>
+#include <filesystem>
 #include <memory>
 #include <string>
 
@@ -43,6 +44,28 @@ TEST(AuthServiceTest, BootstrapsSuperAdminOnlyOnce) {
   EXPECT_EQ(first.user.role, shuati::auth::UserRole::SuperAdmin);
   EXPECT_FALSE(second.ok);
   EXPECT_EQ(second.error, shuati::auth::AuthError::AlreadyExists);
+}
+
+TEST(AuthServiceTest, UserRepositorySurvivesRestartWhenStatePathIsConfigured) {
+  const auto directory = std::filesystem::temp_directory_path() /
+                         ("shuati-users-state-" + std::to_string(
+                             std::chrono::steady_clock::now()
+                                 .time_since_epoch().count()));
+  const auto path = directory / "users.state";
+  {
+    shuati::auth::InMemoryUserRepository repository(path);
+    ASSERT_TRUE(repository.createUser("alice", "hash-value",
+                                      shuati::auth::UserRole::Admin)
+                    .has_value());
+  }
+  {
+    shuati::auth::InMemoryUserRepository repository(path);
+    const auto user = repository.findByUsername("alice");
+    ASSERT_TRUE(user.has_value());
+    EXPECT_EQ(user->passwordHash, "hash-value");
+    EXPECT_EQ(user->role, shuati::auth::UserRole::Admin);
+  }
+  std::filesystem::remove_all(directory);
 }
 
 TEST(AuthServiceTest, RegistersUserAndRejectsDuplicateUsername) {

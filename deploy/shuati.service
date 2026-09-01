@@ -1,0 +1,23 @@
+[Unit]
+Description=Shuati online judge
+After=network-online.target docker.service
+Wants=network-online.target docker.service
+
+[Service]
+Type=simple
+User=shuati
+Group=shuati
+SupplementaryGroups=docker
+WorkingDirectory=/opt/shuati-platform
+ExecStart=/opt/shuati-platform/build/production/shuati_server --config /etc/shuati/app.yaml
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/shuati /var/log/shuati
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

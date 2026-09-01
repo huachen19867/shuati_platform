@@ -115,6 +115,8 @@ bootstrap:
 TEST(AppConfigTest, LoadsJudgeAndStorageValues) {
   const auto path = writeTempConfig(R"CFG(
 judge:
+  runner: "docker"
+  docker_binary: "/usr/bin/docker"
   docker_image: "custom-cpp-judge:latest"
   workers: 3
   source_size_limit_kb: 96
@@ -129,11 +131,14 @@ storage:
   testcase_dir: "tmp/testcases"
   submission_dir: "tmp/submissions"
   source_retention_hours: 12
+  state_dir: "tmp/state"
 )CFG");
 
   const auto config = shuati::app::AppConfig::loadFromFile(path.string());
 
   EXPECT_EQ(config.judge.dockerImage, "custom-cpp-judge:latest");
+  EXPECT_EQ(config.judge.runner, "docker");
+  EXPECT_EQ(config.judge.dockerBinary, "/usr/bin/docker");
   EXPECT_EQ(config.judge.workers, 3);
   EXPECT_EQ(config.judge.sourceSizeLimitKb, 96);
   EXPECT_EQ(config.judge.compileTimeoutMs, 12000);
@@ -146,6 +151,7 @@ storage:
   EXPECT_EQ(config.storage.testcaseDir, "tmp/testcases");
   EXPECT_EQ(config.storage.submissionDir, "tmp/submissions");
   EXPECT_EQ(config.storage.sourceRetentionHours, 12);
+  EXPECT_EQ(config.storage.stateDir, "tmp/state");
 
   std::filesystem::remove(path);
 }
@@ -156,6 +162,8 @@ TEST(AppConfigTest, UsesConservativeJudgeAndStorageDefaults) {
   const auto config = shuati::app::AppConfig::loadFromFile(path.string());
 
   EXPECT_EQ(config.judge.dockerImage, "shuati-cpp-judge:latest");
+  EXPECT_EQ(config.judge.runner, "local");
+  EXPECT_EQ(config.judge.dockerBinary, "docker");
   EXPECT_EQ(config.judge.workers, 4);
   EXPECT_EQ(config.judge.sourceSizeLimitKb, 64);
   EXPECT_EQ(config.judge.compileTimeoutMs, 10000);
@@ -168,6 +176,7 @@ TEST(AppConfigTest, UsesConservativeJudgeAndStorageDefaults) {
   EXPECT_EQ(config.storage.testcaseDir, "data/testcases");
   EXPECT_EQ(config.storage.submissionDir, "data/submissions");
   EXPECT_EQ(config.storage.sourceRetentionHours, 24);
+  EXPECT_EQ(config.storage.stateDir, "data/state");
 
   std::filesystem::remove(path);
 }

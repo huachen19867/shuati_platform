@@ -404,6 +404,29 @@ textarea {
   height: 420px;
 }
 
+#code-editor[contenteditable="true"] {
+  padding: 14px;
+  overflow: auto;
+  white-space: pre;
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+}
+
+.sample-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.sample-grid pre {
+  min-height: 64px;
+  margin: 6px 0 0;
+  padding: 12px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--code-bg);
+}
+
 .table-wrap {
   overflow-x: auto;
   border: 1px solid var(--line);
@@ -509,6 +532,10 @@ tr:last-child td {
   }
 
   .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sample-grid {
     grid-template-columns: 1fr;
   }
 }

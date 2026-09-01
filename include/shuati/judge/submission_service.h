@@ -3,6 +3,7 @@
 #include <chrono>
 #include <cstdint>
 #include <functional>
+#include <filesystem>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -71,6 +72,8 @@ class ISubmissionRepository {
   virtual std::optional<Submission> findById(std::int64_t id) const = 0;
   virtual std::optional<Submission> claimNextPending(
       const std::string& workerId) = 0;
+  virtual std::optional<Submission> claimPendingById(
+      std::int64_t id, const std::string& workerId) = 0;
   virtual std::optional<Submission> completeSubmission(
       std::int64_t id,
       const JudgeRunResult& result) = 0;
@@ -82,7 +85,8 @@ class InMemorySubmissionRepository : public ISubmissionRepository {
   using Clock = std::function<std::chrono::system_clock::time_point()>;
 
   explicit InMemorySubmissionRepository(
-      Clock clock = [] { return std::chrono::system_clock::now(); });
+      Clock clock = [] { return std::chrono::system_clock::now(); },
+      std::filesystem::path persistencePath = {});
 
   Submission createSubmission(std::int64_t userId,
                               std::int64_t problemId,
@@ -91,6 +95,8 @@ class InMemorySubmissionRepository : public ISubmissionRepository {
   std::optional<Submission> findById(std::int64_t id) const override;
   std::optional<Submission> claimNextPending(
       const std::string& workerId) override;
+  std::optional<Submission> claimPendingById(
+      std::int64_t id, const std::string& workerId) override;
   std::optional<Submission> completeSubmission(
       std::int64_t id,
       const JudgeRunResult& result) override;
@@ -101,9 +107,12 @@ class InMemorySubmissionRepository : public ISubmissionRepository {
 
  private:
   std::chrono::system_clock::time_point now() const;
+  void load();
+  void persistLocked() const;
 
   mutable std::mutex mutex_;
   Clock clock_;
+  std::filesystem::path persistencePath_;
   std::int64_t nextId_ = 1;
   std::unordered_map<std::int64_t, Submission> submissionsById_;
 };
@@ -125,6 +134,8 @@ class SubmissionService {
                                     const std::string& language,
                                     const std::string& source);
   SubmissionResult claimNextPending(const std::string& workerId);
+  SubmissionResult claimPendingById(std::int64_t submissionId,
+                                    const std::string& workerId);
   SubmissionResult completeSubmission(std::int64_t submissionId,
                                       const JudgeRunResult& judgeResult);
   SubmissionResult getSubmission(const Actor& actor,

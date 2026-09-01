@@ -334,7 +334,12 @@ std::string sessionToken(const httplib::Request& request) {
 
 std::string clientKey(const httplib::Request& request,
                       const std::string& action) {
-  return action + ":" + request.remote_addr;
+  auto address = request.remote_addr;
+  if ((address == "127.0.0.1" || address == "::1") &&
+      request.has_header("X-Real-IP")) {
+    address = request.get_header_value("X-Real-IP");
+  }
+  return action + ":" + address;
 }
 
 std::string unixSeconds(std::chrono::system_clock::time_point value) {
@@ -746,8 +751,8 @@ void registerSubmissionRoutes(
                   setSubmissionError(res, created.error);
                   return;
                 }
-                const auto claimed =
-                    submissionService.claimNextPending("inline-http");
+                const auto claimed = submissionService.claimPendingById(
+                    created.submission.id, "inline-http");
                 if (!claimed.ok) {
                   setSubmissionError(res, claimed.error);
                   return;

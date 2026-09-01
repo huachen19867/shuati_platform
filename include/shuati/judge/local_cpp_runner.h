@@ -35,9 +35,10 @@ struct JudgeRunResult {
 
 class LocalCppRunner {
  public:
+  virtual ~LocalCppRunner() = default;
   explicit LocalCppRunner(LocalCppRunnerConfig config);
 
-  JudgeRunResult judge(const JudgeRunRequest& request) const;
+  virtual JudgeRunResult judge(const JudgeRunRequest& request) const;
 
  private:
   LocalCppRunnerConfig config_;

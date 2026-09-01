@@ -26,6 +26,8 @@
 !/data/submissions/.gitkeep
 /data/judge_tmp/*
 !/data/judge_tmp/.gitkeep
+/data/state/*
+!/data/state/.gitkeep
 
 # Local config overrides
 /config/*.local.yaml

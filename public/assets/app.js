@@ -279,6 +279,18 @@
     try {
       const data = await api(`/api/problems/${id}`);
       const problem = data.problem;
+      let samples = [];
+      try {
+        samples = JSON.parse(problem.samples_json || "[]");
+      } catch (_) {
+        samples = [];
+      }
+      const samplesHtml = samples.length ? samples.map((sample, index) => `
+        <div class="sample-grid">
+          <div><p class="field-label">样例输入 ${index + 1}</p><pre>${escapeHtml(sample.input || "")}</pre></div>
+          <div><p class="field-label">样例输出 ${index + 1}</p><pre>${escapeHtml(sample.output || "")}</pre></div>
+        </div>
+      `).join("") : `<div class="empty">暂无公开样例。</div>`;
       app.innerHTML = `
         ${pageHead(problem.title, `${problem.difficulty} · ${(problem.tags || []).join(", ")}`)}
         <section class="layout-two" style="margin-top: 20px;">
@@ -288,6 +300,7 @@
               <div><p class="field-label">描述</p><div class="statement">${escapeHtml(problem.statement)}</div></div>
               <div><p class="field-label">输入</p><div class="statement">${escapeHtml(problem.input_description)}</div></div>
               <div><p class="field-label">输出</p><div class="statement">${escapeHtml(problem.output_description)}</div></div>
+              <div><p class="field-label">样例</p>${samplesHtml}</div>
             </div>
           </article>
           <aside class="panel">
@@ -310,8 +323,13 @@
   function setupEditor() {
     const starter = `#include <iostream>\n\nint main() {\n  long long a, b;\n  if (std::cin >> a >> b) {\n    std::cout << a + b << "\\n";\n  }\n  return 0;\n}\n`;
     if (!window.ace) {
-      document.getElementById("code-editor").textContent = starter;
-      showToast("Ace 编辑器加载失败，请检查网络后刷新页面。");
+      const fallback = document.getElementById("code-editor");
+      fallback.textContent = starter;
+      fallback.contentEditable = "true";
+      fallback.setAttribute("role", "textbox");
+      fallback.setAttribute("aria-label", "C++ 源代码编辑器");
+      fallback.setAttribute("spellcheck", "false");
+      showToast("Ace 编辑器加载失败，已切换到基础编辑器。");
       return;
     }
     window.ace.config.set("basePath", "https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.9");

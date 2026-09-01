@@ -1,8 +1,67 @@
 #include "shuati/auth/user_repository.h"
 
 #include <algorithm>
+#include <sstream>
+#include <stdexcept>
+
+#include "shuati/common/state_file.h"
 
 namespace shuati::auth {
+
+InMemoryUserRepository::InMemoryUserRepository(
+    std::filesystem::path persistencePath)
+    : persistencePath_(std::move(persistencePath)) {
+  load();
+}
+
+void InMemoryUserRepository::load() {
+  if (persistencePath_.empty()) return;
+  const auto content = shuati::common::readStateFile(persistencePath_);
+  if (content.empty()) return;
+  std::istringstream input(content);
+  std::string line;
+  std::getline(input, line);
+  if (line != "SHUATI_USERS_V1") {
+    throw std::runtime_error("unsupported users state format");
+  }
+  while (std::getline(input, line)) {
+    if (line.empty()) continue;
+    const auto fields = shuati::common::splitStateLine(line);
+    if (fields.size() != 5) {
+      throw std::runtime_error("corrupt users state record");
+    }
+    UserRecord user;
+    user.id = std::stoll(fields[0]);
+    user.createdAt = shuati::common::timeFromEpochMilliseconds(
+        std::stoll(fields[1]));
+    user.role = parseRole(fields[2]);
+    user.username = shuati::common::hexDecode(fields[3]);
+    user.passwordHash = shuati::common::hexDecode(fields[4]);
+    usersById_[user.id] = user;
+    idsByUsername_[user.username] = user.id;
+    nextId_ = std::max(nextId_, user.id + 1);
+  }
+}
+
+void InMemoryUserRepository::persistLocked() const {
+  if (persistencePath_.empty()) return;
+  std::vector<UserRecord> users;
+  users.reserve(usersById_.size());
+  for (const auto& item : usersById_) users.push_back(item.second);
+  std::sort(users.begin(), users.end(), [](const auto& left, const auto& right) {
+    return left.id < right.id;
+  });
+  std::ostringstream output;
+  output << "SHUATI_USERS_V1\n";
+  for (const auto& user : users) {
+    output << user.id << '\t'
+           << shuati::common::epochMilliseconds(user.createdAt) << '\t'
+           << toString(user.role) << '\t'
+           << shuati::common::hexEncode(user.username) << '\t'
+           << shuati::common::hexEncode(user.passwordHash) << '\n';
+  }
+  shuati::common::atomicWriteStateFile(persistencePath_, output.str());
+}
 
 std::optional<UserRecord> InMemoryUserRepository::createUser(
     const std::string& username,
@@ -22,6 +81,7 @@ std::optional<UserRecord> InMemoryUserRepository::createUser(
 
   idsByUsername_[username] = user.id;
   usersById_[user.id] = user;
+  persistLocked();
   return user;
 }
 
@@ -54,6 +114,7 @@ std::optional<UserRecord> InMemoryUserRepository::updateRole(
     return std::nullopt;
   }
   it->second.role = role;
+  persistLocked();
   return it->second;
 }
 

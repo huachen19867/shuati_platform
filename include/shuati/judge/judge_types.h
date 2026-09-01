@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <string>
 
 namespace shuati::judge {
@@ -29,6 +30,7 @@ struct JudgeCaseResult {
 };
 
 std::string toString(SubmissionStatus status);
+std::optional<SubmissionStatus> parseSubmissionStatus(const std::string& value);
 bool isFinalStatus(SubmissionStatus status);
 
 }  // namespace shuati::judge

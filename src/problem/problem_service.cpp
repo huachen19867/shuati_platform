@@ -2,6 +2,10 @@
 
 #include <algorithm>
 #include <cctype>
+#include <sstream>
+#include <stdexcept>
+
+#include "shuati/common/state_file.h"
 
 namespace shuati::problem {
 namespace {
@@ -50,6 +54,83 @@ Problem fromDraft(const ProblemDraft& draft, std::int64_t id,
 
 }  // namespace
 
+InMemoryProblemRepository::InMemoryProblemRepository(
+    std::filesystem::path persistencePath)
+    : persistencePath_(std::move(persistencePath)) {
+  load();
+}
+
+void InMemoryProblemRepository::load() {
+  if (persistencePath_.empty()) return;
+  const auto content = shuati::common::readStateFile(persistencePath_);
+  if (content.empty()) return;
+  std::istringstream input(content);
+  std::string line;
+  std::getline(input, line);
+  if (line != "SHUATI_PROBLEMS_V1") {
+    throw std::runtime_error("unsupported problems state format");
+  }
+  while (std::getline(input, line)) {
+    if (line.empty()) continue;
+    const auto fields = shuati::common::splitStateLine(line);
+    if (fields.size() < 11) {
+      throw std::runtime_error("corrupt problems state record");
+    }
+    const auto difficulty = parseDifficulty(fields[4]);
+    const auto tagCount = static_cast<std::size_t>(std::stoull(fields[10]));
+    if (!difficulty.has_value() || fields.size() != 11 + tagCount) {
+      throw std::runtime_error("corrupt problems state fields");
+    }
+    Problem problem;
+    problem.id = std::stoll(fields[0]);
+    problem.createdAt = shuati::common::timeFromEpochMilliseconds(
+        std::stoll(fields[1]));
+    problem.updatedAt = shuati::common::timeFromEpochMilliseconds(
+        std::stoll(fields[2]));
+    problem.createdBy = std::stoll(fields[3]);
+    problem.difficulty = *difficulty;
+    problem.title = shuati::common::hexDecode(fields[5]);
+    problem.statement = shuati::common::hexDecode(fields[6]);
+    problem.inputDescription = shuati::common::hexDecode(fields[7]);
+    problem.outputDescription = shuati::common::hexDecode(fields[8]);
+    problem.samplesJson = shuati::common::hexDecode(fields[9]);
+    for (std::size_t i = 0; i < tagCount; ++i) {
+      problem.tags.push_back(shuati::common::hexDecode(fields[11 + i]));
+    }
+    problemsById_[problem.id] = problem;
+    nextId_ = std::max(nextId_, problem.id + 1);
+  }
+}
+
+void InMemoryProblemRepository::persistLocked() const {
+  if (persistencePath_.empty()) return;
+  std::vector<Problem> problems;
+  problems.reserve(problemsById_.size());
+  for (const auto& item : problemsById_) problems.push_back(item.second);
+  std::sort(problems.begin(), problems.end(), [](const auto& left, const auto& right) {
+    return left.id < right.id;
+  });
+  std::ostringstream output;
+  output << "SHUATI_PROBLEMS_V1\n";
+  for (const auto& problem : problems) {
+    output << problem.id << '\t'
+           << shuati::common::epochMilliseconds(problem.createdAt) << '\t'
+           << shuati::common::epochMilliseconds(problem.updatedAt) << '\t'
+           << problem.createdBy << '\t' << toString(problem.difficulty) << '\t'
+           << shuati::common::hexEncode(problem.title) << '\t'
+           << shuati::common::hexEncode(problem.statement) << '\t'
+           << shuati::common::hexEncode(problem.inputDescription) << '\t'
+           << shuati::common::hexEncode(problem.outputDescription) << '\t'
+           << shuati::common::hexEncode(problem.samplesJson) << '\t'
+           << problem.tags.size();
+    for (const auto& tag : problem.tags) {
+      output << '\t' << shuati::common::hexEncode(tag);
+    }
+    output << '\n';
+  }
+  shuati::common::atomicWriteStateFile(persistencePath_, output.str());
+}
+
 Problem InMemoryProblemRepository::createProblem(const ProblemDraft& draft,
                                                  std::int64_t createdBy) {
   std::lock_guard<std::mutex> lock(mutex_);
@@ -57,6 +138,7 @@ Problem InMemoryProblemRepository::createProblem(const ProblemDraft& draft,
   auto problem = fromDraft(draft, nextId_++, createdBy, now);
   problem.updatedAt = now;
   problemsById_[problem.id] = problem;
+  persistLocked();
   return problem;
 }
 
@@ -74,6 +156,7 @@ std::optional<Problem> InMemoryProblemRepository::updateProblem(
   auto updated = fromDraft(draft, id, createdBy, createdAt);
   updated.updatedAt = std::chrono::system_clock::now();
   it->second = updated;
+  persistLocked();
   return updated;
 }
 
