@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.18)
 
 project(
   shuati_platform
@@ -14,6 +14,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(SHUATI_BUILD_TESTS "Build unit tests" ON)
 
 find_package(OpenSSL REQUIRED)
+find_package(Threads REQUIRED)
 find_library(CRYPT_LIBRARY crypt REQUIRED)
 
 add_library(shuati_core
@@ -47,6 +48,7 @@ target_include_directories(shuati_core
 target_link_libraries(shuati_core
   PUBLIC
     OpenSSL::Crypto
+    Threads::Threads
     ${CRYPT_LIBRARY}
 )
 
