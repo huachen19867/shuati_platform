@@ -153,7 +153,8 @@ JudgeRunResult DockerCppRunner::judge(const JudgeRunRequest& request) const {
       std::filesystem::copy_file(testcase.outputPath, workDir / (caseName + ".out"),
                                  std::filesystem::copy_options::overwrite_existing);
 
-      const auto blocks = std::max(1, (dockerConfig_.outputLimitKb + 511) / 512);
+      // POSIX sh exposes RLIMIT_FSIZE in 512-byte blocks.
+      const auto blocks = std::max(1, dockerConfig_.outputLimitKb * 2);
       const auto inner = "ulimit -f " + std::to_string(blocks) +
                          "; timeout " +
                          std::to_string(timeoutSeconds(
