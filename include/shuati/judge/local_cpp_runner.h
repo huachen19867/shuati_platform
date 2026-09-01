@@ -23,6 +23,7 @@ struct JudgeRunRequest {
   std::int64_t submissionId = 0;
   std::string source;
   std::vector<shuati::problem::TestcaseMeta> testcases;
+  std::string language = "cpp";
 };
 
 struct JudgeRunResult {

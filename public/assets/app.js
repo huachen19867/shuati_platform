@@ -212,7 +212,7 @@
 
   async function renderProblems() {
     app.innerHTML = `
-      ${pageHead("题目", "按标题、难度和标签筛选题目，打开题面后直接提交 C++ ACM 程序。", state.user?.role !== "user" && state.user ? '<a class="button primary" href="#/admin">进入后台</a>' : "")}
+      ${pageHead("题目", "按标题、难度和标签筛选题目，打开题面后直接提交 C/C++ ACM 程序。", state.user?.role !== "user" && state.user ? '<a class="button primary" href="#/admin">进入后台</a>' : "")}
       <form id="problem-filter" class="toolbar">
         <div class="field grow">
           <label for="keyword">标题关键字</label>
@@ -304,8 +304,9 @@
             </div>
           </article>
           <aside class="panel">
-            <div class="panel-head"><h2>提交 C++</h2><span class="badge">ACM I/O</span></div>
+            <div class="panel-head"><h2>提交代码</h2><span class="badge">ACM I/O</span></div>
             <div class="panel-body stack">
+              <div class="field"><label for="language-select">语言</label><select id="language-select"><option value="cpp">C++17</option><option value="c">C17</option></select></div>
               <div class="editor-shell"><div id="code-editor"></div></div>
               <button class="primary" type="button" id="submit-code">提交代码</button>
               <div id="submission-result" class="empty">提交后会显示状态和每个测试点结果。</div>
@@ -313,21 +314,25 @@
           </aside>
         </section>
       `;
-      setupEditor();
+      const defaultLanguage = (problem.tags || []).includes("C语言") ? "c" : "cpp";
+      document.getElementById("language-select").value = defaultLanguage;
+      setupEditor(defaultLanguage);
       document.getElementById("submit-code").addEventListener("click", () => submitCode(id));
     } catch (error) {
       app.innerHTML = `${pageHead("题目详情", "加载失败。")}<div class="error-box">${escapeHtml(error.message)}</div>`;
     }
   }
 
-  function setupEditor() {
-    const starter = `#include <iostream>\n\nint main() {\n  long long a, b;\n  if (std::cin >> a >> b) {\n    std::cout << a + b << "\\n";\n  }\n  return 0;\n}\n`;
+  function setupEditor(language = "cpp") {
+    const starter = language === "c"
+      ? `#include <stdio.h>\n\nint main(void) {\n  int a, b;\n  if (scanf("%d%d", &a, &b) == 2) {\n    printf("%d\\n", a + b);\n  }\n  return 0;\n}\n`
+      : `#include <iostream>\n\nint main() {\n  long long a, b;\n  if (std::cin >> a >> b) {\n    std::cout << a + b << "\\n";\n  }\n  return 0;\n}\n`;
     if (!window.ace) {
       const fallback = document.getElementById("code-editor");
       fallback.textContent = starter;
       fallback.contentEditable = "true";
       fallback.setAttribute("role", "textbox");
-      fallback.setAttribute("aria-label", "C++ 源代码编辑器");
+      fallback.setAttribute("aria-label", "C/C++ 源代码编辑器");
       fallback.setAttribute("spellcheck", "false");
       showToast("Ace 编辑器加载失败，已切换到基础编辑器。");
       return;
@@ -351,13 +356,14 @@
       return;
     }
     const source = state.editor ? state.editor.getValue() : document.getElementById("code-editor").textContent;
+    const language = document.getElementById("language-select")?.value || "cpp";
     const resultBox = document.getElementById("submission-result");
     resultBox.className = "empty";
     resultBox.textContent = "正在提交并等待判题...";
     try {
       const data = await api(`/api/problems/${problemId}/submissions`, {
         method: "POST",
-        body: JSON.stringify({ source })
+        body: JSON.stringify({ source, language })
       });
       renderSubmissionBox(data.submission, resultBox);
       pollSubmission(data.submission.id, resultBox);

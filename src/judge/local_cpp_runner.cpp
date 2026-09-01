@@ -96,7 +96,8 @@ JudgeRunResult LocalCppRunner::judge(const JudgeRunRequest& request) const {
 
   const auto workDir = std::filesystem::path(config_.tempDir) /
                        ("submission_" + std::to_string(request.submissionId));
-  const auto sourcePath = workDir / "main.cpp";
+  const bool isC = request.language == "c";
+  const auto sourcePath = workDir / (isC ? "main.c" : "main.cpp");
   const auto executablePath = workDir / "main";
   const auto compileLogPath = workDir / "compile.log";
 
@@ -107,8 +108,9 @@ JudgeRunResult LocalCppRunner::judge(const JudgeRunRequest& request) const {
 
     std::ostringstream compileCommand;
     compileCommand << "timeout " << timeoutSeconds(config_.compileTimeoutMs)
-                   << ' ' << config_.compiler
-                   << " -std=c++17 -O2 -pipe "
+                   << ' ' << (isC ? "gcc" : config_.compiler)
+                   << (isC ? " -std=c17" : " -std=c++17")
+                   << " -O2 -pipe "
                    << shellQuote(sourcePath.generic_string()) << " -o "
                    << shellQuote(executablePath.generic_string()) << " > "
                    << shellQuote(compileLogPath.generic_string()) << " 2>&1";

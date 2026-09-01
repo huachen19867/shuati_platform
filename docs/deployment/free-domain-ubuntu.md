@@ -37,7 +37,7 @@ curl https://my-shuati.duckdns.org/api/health
 docker run --rm shuati-cpp-judge:latest g++ --version
 ```
 
-浏览器打开域名，注册普通账号后即可进入题目并提交 C++。管理入口使用
+浏览器打开域名，注册普通账号后即可进入题目并提交 C 或 C++。管理入口使用
 `root` 和部署时设置的密码。运行状态位于 `/var/lib/shuati`，配置位于
 `/etc/shuati/app.yaml`，日志位于 `/var/log/shuati`。升级代码后重新运行同一
 安装脚本即可执行 fast-forward 更新、重编译和重启；状态目录不会被覆盖。

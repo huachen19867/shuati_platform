@@ -120,7 +120,10 @@ JudgeRunResult DockerCppRunner::judge(const JudgeRunRequest& request) const {
   try {
     std::filesystem::remove_all(workDir);
     std::filesystem::create_directories(workDir);
-    writeFile(workDir / "main.cpp", request.source);
+    const bool isC = request.language == "c";
+    const auto sourceName = isC ? "main.c" : "main.cpp";
+    const auto compiler = isC ? "gcc" : "g++";
+    writeFile(workDir / sourceName, request.source);
 
     const auto compileCommand =
         sandboxPrefix(dockerConfig_, workDir,
@@ -128,7 +131,9 @@ JudgeRunResult DockerCppRunner::judge(const JudgeRunRequest& request) const {
         shellQuote("timeout " +
                    std::to_string(timeoutSeconds(
                        dockerConfig_.compileTimeoutMs)) +
-                   " g++ -std=c++17 -O2 -pipe main.cpp -o main > "
+                   " " + std::string(compiler) +
+                   (isC ? " -std=c17" : " -std=c++17") +
+                   " -O2 -pipe " + sourceName + " -o main > "
                    "compile.log 2>&1");
     const auto compileExit = commandExitCode(std::system(compileCommand.c_str()));
     if (compileExit != 0) {

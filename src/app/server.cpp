@@ -745,8 +745,10 @@ void registerSubmissionRoutes(
                       res, shuati::judge::SubmissionError::InvalidInput);
                   return;
                 }
+                const auto language =
+                    extractJsonString(req.body, "language").value_or("cpp");
                 const auto created = submissionService.createSubmission(
-                    judgeActor(*user), problemId, "cpp", *source);
+                    judgeActor(*user), problemId, language, *source);
                 if (!created.ok) {
                   setSubmissionError(res, created.error);
                   return;
@@ -759,7 +761,7 @@ void registerSubmissionRoutes(
                 }
                 const auto judgeResult = runner.judge(
                     {created.submission.id, created.submission.source,
-                     testcases.testcases});
+                     testcases.testcases, created.submission.language});
                 const auto completed = submissionService.completeSubmission(
                     created.submission.id, judgeResult);
                 if (!completed.ok) {

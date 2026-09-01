@@ -278,7 +278,8 @@ SubmissionResult SubmissionService::createSubmission(
     std::int64_t problemId,
     const std::string& language,
     const std::string& source) {
-  if (actor.userId <= 0 || problemId <= 0 || language != "cpp" ||
+  if (actor.userId <= 0 || problemId <= 0 ||
+      (language != "cpp" && language != "c") ||
       source.empty() ||
       source.size() >
           static_cast<std::size_t>(sourceSizeLimitKb_) * 1024U) {
