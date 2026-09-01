@@ -17,7 +17,8 @@ except ImportError as exc:
 
 
 ROOT = Path(__file__).resolve().parents[1]
-BUILD = ROOT / "build" / "p5p7" / "shuati_server"
+BUILD = Path(os.environ.get("SHUATI_SERVER_BIN", ROOT / "build" / "p5p7" / "shuati_server"))
+RUNNER = os.environ.get("SHUATI_TEST_RUNNER", "local")
 BASE = "http://127.0.0.1:18082"
 
 
@@ -49,6 +50,8 @@ database:
   pool_size: 4
   acquire_timeout_ms: 3000
 judge:
+  runner: "{RUNNER}"
+  docker_binary: "docker"
   docker_image: "shuati-cpp-judge:latest"
   workers: 4
   source_size_limit_kb: 64
@@ -63,6 +66,7 @@ storage:
   testcase_dir: "{tmp / 'data/testcases'}"
   submission_dir: "{tmp / 'data/submissions'}"
   source_retention_hours: 24
+  state_dir: "{tmp / 'data/state'}"
 logs:
   level: "info"
   access: "{tmp / 'logs/access.log'}"

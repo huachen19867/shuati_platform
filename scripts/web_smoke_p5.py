@@ -60,6 +60,7 @@ storage:
   testcase_dir: "{tmp / 'data/testcases'}"
   submission_dir: "{tmp / 'data/submissions'}"
   source_retention_hours: 24
+  state_dir: "{tmp / 'data/state'}"
 logs:
   level: "info"
   access: "{tmp / 'logs/access.log'}"

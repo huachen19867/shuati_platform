@@ -44,6 +44,7 @@ storage:
   testcase_dir: "$smoke/data/testcases"
   submission_dir: "$smoke/data/submissions"
   source_retention_hours: 24
+  state_dir: "$smoke/data/state"
 logs:
   level: "info"
   access: "$smoke/logs/access.log"
