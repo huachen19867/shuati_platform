@@ -28,6 +28,8 @@
 !/data/judge_tmp/.gitkeep
 /data/state/*
 !/data/state/.gitkeep
+/runtime-demo/*
+!/runtime-demo/.gitkeep
 
 # Local config overrides
 /config/*.local.yaml
